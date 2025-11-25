@@ -6,12 +6,14 @@ import { useRouter } from 'next/navigation';
 import { Program } from '@/types/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Play } from 'lucide-react';
 
 export default function ProgramsTab() {
   const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>('A');
 
   useEffect(() => {
     fetchPrograms();
@@ -56,17 +58,28 @@ export default function ProgramsTab() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold">My Programs</h2>
           <p className="text-muted-foreground">{programs.length} program(s) created</p>
         </div>
-        <Link href="/programs/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Program
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Week:</span>
+            <Tabs value={selectedWeek} onValueChange={(value) => setSelectedWeek(value as 'A' | 'B')}>
+              <TabsList>
+                <TabsTrigger value="A">A</TabsTrigger>
+                <TabsTrigger value="B">B</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <Link href="/programs/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Program
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {programs.length === 0 ? (
@@ -95,22 +108,29 @@ export default function ProgramsTab() {
                     <CardTitle>{program.name}</CardTitle>
                     <CardDescription>{program.days.length} day(s)</CardDescription>
                   </div>
-                  <Link 
-                    href={`/programs/${program.id}/edit`} 
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Edit className="h-4 w-4" />
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/programs/${program.id}/edit`}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(program.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 mb-4">
+                <div className="space-y-3">
                   {program.days.map(day => (
                     <div 
                       key={day.id} 
-                      className="flex items-center justify-between p-2 rounded bg-muted"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex-1">
@@ -119,23 +139,14 @@ export default function ProgramsTab() {
                           Week A: {day.weekA.length} • Week B: {day.weekB.length}
                         </div>
                       </div>
-                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}`} onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="ghost">
-                          <Play className="h-4 w-4" />
+                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${selectedWeek}`} onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" className="ml-2">
+                          <Play className="mr-2 h-4 w-4" />
+                          Start
                         </Button>
                       </Link>
                     </div>
                   ))}
-                </div>
-
-                <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(program.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -250,22 +250,40 @@ export default function AnalyticsPage() {
 
   // Calendar data
   const calendarData = useMemo(() => {
-    const calendarMap = new Map<string, { date: string; workouts: number; exercises: number }>();
+    const calendarMap = new Map<string, { 
+      date: string; 
+      workouts: number; 
+      exercises: number;
+      workoutDetails: Array<{ programName: string; dayName: string }>;
+    }>();
     
     filteredLogs.forEach(log => {
       const dateKey = new Date(log.date).toISOString().split('T')[0];
       if (!calendarMap.has(dateKey)) {
-        calendarMap.set(dateKey, { date: dateKey, workouts: 0, exercises: 0 });
+        calendarMap.set(dateKey, { 
+          date: dateKey, 
+          workouts: 0, 
+          exercises: 0,
+          workoutDetails: []
+        });
       }
       const day = calendarMap.get(dateKey)!;
       day.workouts += 1;
       day.exercises += log.exercises.length;
+      
+      // Get program and day name
+      const program = programs.find(p => p.id === log.programId);
+      const programName = program?.name || `Program ${log.programId.slice(-6)}`;
+      const workoutDay = program?.days.find(d => d.id === log.dayId);
+      const dayName = workoutDay?.name || `Day ${log.dayId.slice(-6)}`;
+      
+      day.workoutDetails.push({ programName, dayName });
     });
     
     return Array.from(calendarMap.values()).sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-  }, [filteredLogs]);
+  }, [filteredLogs, programs]);
 
   if (loading) {
     return (
@@ -530,20 +548,34 @@ export default function AnalyticsPage() {
                     const date = new Date(day.date);
                     const dayOfWeek = date.getDay();
                     const dayOfMonth = date.getDate();
+                    const tooltipText = day.workouts > 0
+                      ? `${date.toLocaleDateString()}: ${day.workoutDetails.map(w => `${w.programName} - ${w.dayName}`).join(', ')}`
+                      : date.toLocaleDateString();
+                    const firstWorkout = day.workoutDetails[0];
                     return (
                       <div
                         key={day.date}
-                        className={`aspect-square p-2 rounded-lg border ${
+                        className={`aspect-square p-2 rounded-lg border flex flex-col ${
                           day.workouts > 0 
                             ? 'bg-primary/10 border-primary/30' 
                             : 'bg-muted/30 border-border'
                         }`}
-                        title={`${date.toLocaleDateString()}: ${day.workouts} workout${day.workouts !== 1 ? 's' : ''}, ${day.exercises} exercise${day.exercises !== 1 ? 's' : ''}`}
+                        title={tooltipText}
                       >
-                        <div className="text-xs font-medium">{dayOfMonth}</div>
-                        {day.workouts > 0 && (
-                          <div className="text-xs text-primary mt-1">
-                            {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
+                        <div className="text-xs font-medium mb-1">{dayOfMonth}</div>
+                        {day.workouts > 0 && firstWorkout && (
+                          <div className="text-xs text-primary flex-1 flex flex-col justify-start overflow-hidden">
+                            <div className="font-semibold truncate leading-tight" title={firstWorkout.programName}>
+                              {firstWorkout.programName}
+                            </div>
+                            <div className="text-[10px] opacity-80 truncate leading-tight mt-0.5" title={firstWorkout.dayName}>
+                              {firstWorkout.dayName}
+                            </div>
+                            {day.workouts > 1 && (
+                              <div className="text-[10px] opacity-60 mt-0.5">
+                                +{day.workouts - 1} more
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

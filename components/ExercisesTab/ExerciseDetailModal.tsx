@@ -6,16 +6,15 @@ import { Exercise } from '@/types/exercise';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
+import { BodyHighlighter, IExerciseData, Muscle } from '@/components/BodyHighlighter';
 import { mapMuscleName } from './utils';
 
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
-  themeColors: string[];
   onClose: () => void;
 }
 
-export function ExerciseDetailModal({ exercise, themeColors, onClose }: ExerciseDetailModalProps) {
+export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalProps) {
   const [clickedMuscle, setClickedMuscle] = useState<{ muscle: string; view: 'anterior' | 'posterior' } | null>(null);
   const [highlightedMuscle, setHighlightedMuscle] = useState<string | null>(null);
 
@@ -98,9 +97,8 @@ export function ExerciseDetailModal({ exercise, themeColors, onClose }: Exercise
               <div>
                 <div className="text-xs text-muted-foreground mb-1 text-center">Front</div>
                 <div className="relative">
-                  <Model
+                  <BodyHighlighter
                     data={exerciseData}
-                    highlightedColors={themeColors}
                     style={{ width: '150px', height: '210px' }}
                     bodyColor="#e5e7eb"
                     type="anterior"
@@ -130,9 +128,8 @@ export function ExerciseDetailModal({ exercise, themeColors, onClose }: Exercise
                 <div>
                   <div className="text-xs text-muted-foreground mb-1 text-center">Back</div>
                   <div className="relative">
-                    <Model
+                    <BodyHighlighter
                       data={exerciseData}
-                      highlightedColors={themeColors}
                       style={{ width: '150px', height: '210px' }}
                       bodyColor="#e5e7eb"
                       type="posterior"

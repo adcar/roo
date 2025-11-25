@@ -21,7 +21,6 @@ export default function ExercisesTab() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const exercisesPerPage = 20;
-  const [themeColors] = useState<string[]>(['#ef4444', '#f59e0b', '#10b981']);
 
   const filteredExercises = useMemo(() => {
     return filterExercises(exercises, {
@@ -78,7 +77,6 @@ export default function ExercisesTab() {
 
       <ExerciseDetailModal
         exercise={selectedExercise}
-        themeColors={themeColors}
         onClose={() => setSelectedExercise(null)}
       />
 

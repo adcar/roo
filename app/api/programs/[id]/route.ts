@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, schema } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { getUserId } from '@/lib/auth-server';
 
 function normalizeExerciseOrder(days: any[]) {
   return days.map(day => ({
@@ -15,12 +16,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getUserId();
     const { id } = await params;
     const db = await getDb();
     const [program] = await db
       .select()
       .from(schema.programs)
-      .where(eq(schema.programs.id, id));
+      .where(and(
+        eq(schema.programs.id, id),
+        eq(schema.programs.userId, userId)
+      ) as any);
 
     if (!program) {
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
@@ -32,6 +37,9 @@ export async function GET(
       days: normalizeExerciseOrder(days),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error fetching program:', error);
     return NextResponse.json({ error: 'Failed to fetch program' }, { status: 500 });
   }
@@ -42,9 +50,23 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getUserId();
     const { id } = await params;
     const body = await request.json();
     const db = await getDb();
+
+    // Verify the program belongs to the user
+    const [existingProgram] = await db
+      .select()
+      .from(schema.programs)
+      .where(and(
+        eq(schema.programs.id, id),
+        eq(schema.programs.userId, userId)
+      ) as any);
+
+    if (!existingProgram) {
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+    }
 
     const program = {
       name: body.name,
@@ -55,7 +77,10 @@ export async function PUT(
     await db
       .update(schema.programs)
       .set(program)
-      .where(eq(schema.programs.id, id));
+      .where(and(
+        eq(schema.programs.id, id),
+        eq(schema.programs.userId, userId)
+      ) as any);
 
     return NextResponse.json({
       id,
@@ -63,6 +88,9 @@ export async function PUT(
       days: JSON.parse(program.days),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error updating program:', error);
     return NextResponse.json({ error: 'Failed to update program' }, { status: 500 });
   }
@@ -73,11 +101,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getUserId();
     const { id } = await params;
     const db = await getDb();
-    await db.delete(schema.programs).where(eq(schema.programs.id, id));
+    
+    // Verify the program belongs to the user before deleting
+    await db
+      .delete(schema.programs)
+      .where(and(
+        eq(schema.programs.id, id),
+        eq(schema.programs.userId, userId)
+      ) as any);
+    
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error deleting program:', error);
     return NextResponse.json({ error: 'Failed to delete program' }, { status: 500 });
   }

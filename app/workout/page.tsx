@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ArrowLeft, Check, ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
 
@@ -31,6 +31,8 @@ function WorkoutContent() {
   const [clickedMuscle, setClickedMuscle] = useState<{ muscle: string; view: 'anterior' | 'posterior' } | null>(null);
   const [themeColors, setThemeColors] = useState<string[]>(['#ef4444', '#f59e0b', '#10b981']);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [showMobileImages, setShowMobileImages] = useState(false);
 
   useEffect(() => {
     if (programId) {
@@ -315,17 +317,21 @@ function WorkoutContent() {
   const nextExercise = () => {
     if (currentExerciseIndex < currentExercises.length - 1) {
       setCurrentExerciseIndex(currentExerciseIndex + 1);
+      setShowMobileImages(false); // Reset images visibility when changing exercises
     }
   };
 
   const previousExercise = () => {
     if (currentExerciseIndex > 0) {
       setCurrentExerciseIndex(currentExerciseIndex - 1);
+      setShowMobileImages(false); // Reset images visibility when changing exercises
     }
   };
 
   const finishWorkout = async () => {
-    if (!program || !selectedDay) return;
+    if (!program || !selectedDay || isFinishing) return;
+
+    setIsFinishing(true);
 
     const workoutLog = {
       programId: program.id,
@@ -364,6 +370,7 @@ function WorkoutContent() {
         description: 'Please try again.',
         variant: 'destructive'
       });
+      setIsFinishing(false);
     }
   };
 
@@ -554,23 +561,40 @@ function WorkoutContent() {
                   {/* Exercise Images - Mobile only, below muscles section */}
                   {currentExercise.images.length > 0 && (
                     <div className="md:hidden mt-4">
-                      <div className="grid grid-cols-1 gap-2">
-                        {currentExercise.images.map((img, idx) => (
-                          <div 
-                            key={idx} 
-                            className="relative w-full aspect-[850/567] rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setExpandedImage(img)}
-                          >
-                            <Image
-                              src={`/exercise-images/${img}`}
-                              alt={`${currentExercise.name} ${idx + 1}`}
-                              fill
-                              className="object-contain"
-                              sizes="100vw"
-                            />
-                          </div>
-                        ))}
-                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowMobileImages(!showMobileImages)}
+                        className="w-full justify-between mb-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4" />
+                          <span>Exercise Images ({currentExercise.images.length})</span>
+                        </div>
+                        {showMobileImages ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {showMobileImages && (
+                        <div className="grid grid-cols-1 gap-2">
+                          {currentExercise.images.map((img, idx) => (
+                            <div 
+                              key={idx} 
+                              className="relative w-full aspect-[850/567] rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setExpandedImage(img)}
+                            >
+                              <Image
+                                src={`/exercise-images/${img}`}
+                                alt={`${currentExercise.name} ${idx + 1}`}
+                                fill
+                                className="object-contain"
+                                sizes="100vw"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -671,8 +695,15 @@ function WorkoutContent() {
             Previous
           </Button>
           {currentExerciseIndex === currentExercises.length - 1 ? (
-            <Button onClick={finishWorkout} className="flex-1" size="lg">
-              Finish Workout
+            <Button onClick={finishWorkout} className="flex-1" size="lg" disabled={isFinishing}>
+              {isFinishing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Finishing...
+                </>
+              ) : (
+                'Finish Workout'
+              )}
             </Button>
           ) : (
             <Button onClick={nextExercise} className="flex-1">
@@ -697,3 +728,7 @@ export default function WorkoutPage() {
     </Suspense>
   );
 }
+
+
+
+

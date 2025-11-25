@@ -6,6 +6,7 @@ export const programs = sqliteTable('programs', {
   days: text('days').notNull(), // JSON string
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+  userId: text('user_id').notNull(), // User who owns this program
 });
 
 export const workoutLogs = sqliteTable('workout_logs', {
@@ -15,6 +16,7 @@ export const workoutLogs = sqliteTable('workout_logs', {
   week: text('week').notNull(), // 'A' or 'B'
   date: text('date').notNull(),
   exercises: text('exercises').notNull(), // JSON string
+  userId: text('user_id').notNull(), // User who owns this log
 });
 
 export const customExercises = sqliteTable('custom_exercises', {
@@ -29,4 +31,5 @@ export const customExercises = sqliteTable('custom_exercises', {
   instructions: text('instructions'),
   images: text('images').notNull(), // JSON string
   isCustom: integer('is_custom').default(1),
+  userId: text('user_id').notNull(), // User who owns this exercise
 });

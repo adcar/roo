@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import * as schema from '@/lib/schema';
+import { eq } from 'drizzle-orm';
+import { getUserId } from '@/lib/auth-server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
 export async function POST(request: Request) {
   try {
+    const userId = await getUserId();
     const formData = await request.formData();
     const name = formData.get('name') as string;
     const description = formData.get('description') as string || '';
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
       instructions,
       images: JSON.stringify(imagePaths),
       isCustom: 1,
+      userId,
     };
 
     await db.insert(schema.customExercises).values(exercise);
@@ -67,6 +71,9 @@ export async function POST(request: Request) {
       images: imagePaths,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error creating custom exercise:', error);
     return NextResponse.json({ error: 'Failed to create exercise' }, { status: 500 });
   }
@@ -74,8 +81,12 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    const userId = await getUserId();
     const db = await getDb();
-    const exercises = await db.select().from(schema.customExercises);
+    const exercises = await db
+      .select()
+      .from(schema.customExercises)
+      .where(eq(schema.customExercises.userId, userId));
     
     return NextResponse.json(exercises.map(ex => ({
       ...ex,
@@ -85,6 +96,9 @@ export async function GET() {
       instructions: ex.instructions ? ex.instructions.split('\n').filter(Boolean) : [],
     })));
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error fetching custom exercises:', error);
     return NextResponse.json({ error: 'Failed to fetch exercises' }, { status: 500 });
   }

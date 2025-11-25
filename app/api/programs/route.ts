@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
+import { getUserId } from '@/lib/auth-server';
 
 function normalizeExerciseOrder(days: any[]) {
   return days.map(day => ({
@@ -12,8 +13,12 @@ function normalizeExerciseOrder(days: any[]) {
 
 export async function GET() {
   try {
+    const userId = await getUserId();
     const db = await getDb();
-    const allPrograms = await db.select().from(schema.programs);
+    const allPrograms = await db
+      .select()
+      .from(schema.programs)
+      .where(eq(schema.programs.userId, userId));
 
     const programs = allPrograms.map(p => {
       const days = JSON.parse(p.days);
@@ -25,6 +30,9 @@ export async function GET() {
 
     return NextResponse.json(programs);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error fetching programs:', error);
     return NextResponse.json({ error: 'Failed to fetch programs' }, { status: 500 });
   }
@@ -32,6 +40,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const userId = await getUserId();
     const body = await request.json();
     const db = await getDb();
 
@@ -41,6 +50,7 @@ export async function POST(request: Request) {
       days: JSON.stringify(body.days),
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      userId,
     };
 
     await db.insert(schema.programs).values(program);
@@ -50,6 +60,9 @@ export async function POST(request: Request) {
       days: JSON.parse(program.days),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Error creating program:', error);
     return NextResponse.json({ error: 'Failed to create program' }, { status: 500 });
   }
