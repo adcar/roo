@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --eslint)",
+      "Bash(cp:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add button card input select dialog badge separator)",
+      "Bash(pnpm run dev)",
+      "Bash(pnpm add:*)",
+      "Bash(npx shadcn@latest add tabs)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
