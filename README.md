@@ -9,19 +9,39 @@ A Next.js workout tracking application with support for custom programs and Week
 - **Week A/B Splits**: Each day supports different exercises for Week A and Week B
 - **Exercise Configuration**: Set custom sets, reps, and weight for each exercise
 - **Workout Sessions**: Interactive workout mode to track your progress through exercises
-- **Local Storage**: All programs are saved locally in your browser
+- **Analytics**: Track your progress with detailed analytics and charts
+- **Database**: Uses Turso (libSQL) for reliable data storage, works perfectly on Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-pnpm dev
-# or
-npm run dev
-# or
-yarn dev
-```
+1. **Set up Turso Database** (required for data persistence):
+   - Create a free account at [Turso](https://turso.tech)
+   - Create a new database
+   - Get your database URL and auth token
+   - See [TURSO_SETUP.md](./TURSO_SETUP.md) for detailed instructions
+
+2. **Configure Environment Variables**:
+   Create a `.env.local` file in the root directory:
+   ```env
+   TURSO_DATABASE_URL=libsql://your-database-name.turso.io
+   TURSO_AUTH_TOKEN=your-auth-token-here
+   ```
+
+3. **Install Dependencies**:
+   ```bash
+   pnpm install
+   ```
+
+4. **Run the Development Server**:
+   ```bash
+   pnpm dev
+   # or
+   npm run dev
+   # or
+   yarn dev
+   ```
 
 Open [http://localhost:3001](http://localhost:3001) with your browser to see the application.
 
@@ -45,6 +65,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This app is ready to deploy on Vercel! Follow these steps:
+
+1. **Push your code to GitHub** (already done ✅)
+
+2. **Set up Turso Database** (if not already done):
+   - See [TURSO_SETUP.md](./TURSO_SETUP.md) for instructions
+
+3. **Deploy to Vercel**:
+   - Import your GitHub repository in [Vercel](https://vercel.com)
+   - Add environment variables in Vercel project settings:
+     - `TURSO_DATABASE_URL` = your Turso database URL
+     - `TURSO_AUTH_TOKEN` = your Turso auth token
+   - Deploy!
+
+The app uses Turso (libSQL) which is fully compatible with Vercel's serverless functions. Your data will persist across deployments.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

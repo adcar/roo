@@ -37,13 +37,21 @@ function WorkoutContent() {
       fetch(`/api/programs/${programId}`)
         .then(res => res.json())
         .then(data => {
+          // Handle error responses
+          if (data.error) {
+            console.error('Error fetching program:', data.error);
+            return;
+          }
           setProgram(data);
           if (dayId) {
-            const day = data.days.find((d: WorkoutDay) => d.id === dayId);
+            const day = data.days?.find((d: WorkoutDay) => d.id === dayId);
             if (day) setSelectedDay(day);
-          } else if (data.days.length > 0) {
+          } else if (data.days?.length > 0) {
             setSelectedDay(data.days[0]);
           }
+        })
+        .catch(error => {
+          console.error('Error loading program:', error);
         });
     }
   }, [programId, dayId]);
@@ -55,7 +63,12 @@ function WorkoutContent() {
       // Fetch previous workout logs for this program/day/week
       fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
         .then(res => res.json())
-        .then((previousLogs: WorkoutLog[]) => {
+        .then((previousLogs: WorkoutLog[] | { error?: string }) => {
+          // Handle error responses
+          if (!Array.isArray(previousLogs)) {
+            console.error('Error fetching workout logs:', previousLogs);
+            return;
+          }
           // Filter logs for the same week and sort by date (most recent first)
           const weekLogs = previousLogs
             .filter(log => log.week === selectedWeek)

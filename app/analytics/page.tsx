@@ -62,12 +62,15 @@ export default function AnalyticsPage() {
       fetch('/api/programs').then(res => res.json()),
     ])
       .then(([logsData, programsData]) => {
-        setWorkoutLogs(logsData);
-        setPrograms(programsData);
+        // Ensure both are arrays, handle error responses
+        setWorkoutLogs(Array.isArray(logsData) ? logsData : []);
+        setPrograms(Array.isArray(programsData) ? programsData : []);
         setLoading(false);
       })
       .catch(err => {
         console.error('Error fetching data:', err);
+        setWorkoutLogs([]);
+        setPrograms([]);
         setLoading(false);
       });
   };

@@ -21,9 +21,19 @@ export default function ProgramsTab() {
     try {
       const res = await fetch('/api/programs');
       const data = await res.json();
-      setPrograms(data);
+      // Ensure data is an array, handle error responses
+      if (Array.isArray(data)) {
+        setPrograms(data);
+      } else if (data.error) {
+        console.error('Error fetching programs:', data.error);
+        setPrograms([]); // Set empty array on error
+      } else {
+        console.error('Unexpected response format:', data);
+        setPrograms([]);
+      }
     } catch (error) {
       console.error('Error fetching programs:', error);
+      setPrograms([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

@@ -12,7 +12,9 @@ export default function ProgramsPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
 
   useEffect(() => {
-    setPrograms(storage.getPrograms());
+    const storedPrograms = storage.getPrograms();
+    // Ensure programs is always an array
+    setPrograms(Array.isArray(storedPrograms) ? storedPrograms : []);
   }, []);
 
   const handleDelete = (programId: string) => {

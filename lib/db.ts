@@ -1,25 +1,27 @@
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from './schema';
-import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 
 export async function getDb() {
   if (!db) {
-    // Ensure data directory exists
-    const dataDir = path.join(process.cwd(), 'data');
-    if (!existsSync(dataDir)) {
-      await mkdir(dataDir, { recursive: true });
+    const url = process.env.TURSO_DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (!url) {
+      throw new Error('TURSO_DATABASE_URL environment variable is not set');
     }
 
-    const sqlite = new Database(path.join(dataDir, 'workout.db'));
-    db = drizzle(sqlite, { schema });
+    const client = createClient({
+      url,
+      authToken,
+    });
 
-    // Initialize tables
-    sqlite.exec(`
+    db = drizzle(client, { schema });
+
+    // Initialize tables (idempotent - safe to run multiple times)
+    await client.execute(`
       CREATE TABLE IF NOT EXISTS programs (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -27,7 +29,9 @@ export async function getDb() {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+    `);
 
+    await client.execute(`
       CREATE TABLE IF NOT EXISTS workout_logs (
         id TEXT PRIMARY KEY,
         program_id TEXT NOT NULL,
@@ -36,7 +40,9 @@ export async function getDb() {
         date TEXT NOT NULL,
         exercises TEXT NOT NULL
       );
+    `);
 
+    await client.execute(`
       CREATE TABLE IF NOT EXISTS custom_exercises (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
