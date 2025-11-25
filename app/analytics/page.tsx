@@ -8,13 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
-import { useTheme } from 'next-themes';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Trash2, X } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { WorkoutCalendar } from '@/components/WorkoutCalendar';
+import { DayDetails } from '@/components/DayDetails';
 
 interface SetData {
   reps: number;
@@ -50,7 +50,6 @@ function formatWeekLabel(date: Date): string {
 
 export default function AnalyticsPage() {
   const { exercises } = useExercises();
-  const { theme, resolvedTheme } = useTheme();
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>('all');
@@ -58,33 +57,8 @@ export default function AnalyticsPage() {
   const [viewMode, setViewMode] = useState<'overview' | 'exercise' | 'calendar' | 'history' | 'weekProgress'>('overview');
   const [loading, setLoading] = useState(true);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Chart color config - using chart-1 (primary) for both charts
-  const chartConfig = {
-    weight: {
-      label: 'Weight (lbs)',
-      theme: {
-        light: 'oklch(0.4341 0.0392 41.9938)', // chart-1 light
-        dark: 'oklch(0.9247 0.0524 66.1732)', // chart-1 dark
-      },
-    },
-    reps: {
-      label: 'Reps',
-      theme: {
-        light: 'oklch(0.4341 0.0392 41.9938)', // chart-1 light (same as weight)
-        dark: 'oklch(0.9247 0.0524 66.1732)', // chart-1 dark (same as weight)
-      },
-    },
-  };
-
-  // Get the primary chart color from config based on theme
-  const isDark = mounted && (resolvedTheme === 'dark' || theme === 'dark');
-  const primaryColor = isDark ? chartConfig.weight.theme.dark : chartConfig.weight.theme.light;
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const fetchData = () => {
     Promise.all([
@@ -278,13 +252,13 @@ export default function AnalyticsPage() {
       }));
   }, [selectedExerciseId, exerciseStats]);
 
-  // Calendar data
-  const calendarData = useMemo(() => {
+  // Calendar data as Map for efficient lookup
+  const calendarDataMap = useMemo(() => {
     const calendarMap = new Map<string, { 
       date: string; 
       workouts: number; 
       exercises: number;
-      workoutDetails: Array<{ programName: string; dayName: string; week?: string }>;
+      workoutDetails: Array<{ programName: string; dayName: string; week?: string; logId: string }>;
     }>();
     
     filteredLogs.forEach(log => {
@@ -311,14 +285,22 @@ export default function AnalyticsPage() {
       day.workoutDetails.push({ 
         programName, 
         dayName,
-        week: isSplit ? log.week : undefined
+        week: isSplit ? log.week : undefined,
+        logId: log.id || ''
       });
     });
     
-    return Array.from(calendarMap.values()).sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    return calendarMap;
   }, [filteredLogs, programs]);
+
+  // Get workouts for a specific date
+  const getWorkoutsForDate = (date: Date): WorkoutLog[] => {
+    const dateKey = date.toISOString().split('T')[0];
+    return filteredLogs.filter(log => {
+      const logDateKey = new Date(log.date).toISOString().split('T')[0];
+      return logDateKey === dateKey;
+    });
+  };
 
   if (loading) {
     return (
@@ -349,7 +331,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Analytics</h1>
           {programOptions.length > 0 && (
@@ -370,7 +352,7 @@ export default function AnalyticsPage() {
         </div>
 
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="mb-6">
-          <TabsList>
+          <TabsList className="mb-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="exercise">Exercise Details</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
@@ -470,56 +452,29 @@ export default function AnalyticsPage() {
                         <>
                           <div>
                             <h3 className="font-semibold mb-4">Weight Progression</h3>
-                            <ChartContainer config={chartConfig} className="h-[300px]">
+                            <ResponsiveContainer width="100%" height={300}>
                               <LineChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis 
-                                  dataKey="date" 
-                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                  axisLine={{ stroke: 'hsl(var(--border))' }}
-                                />
-                                <YAxis 
-                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                  axisLine={{ stroke: 'hsl(var(--border))' }}
-                                />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <ChartLegend content={<ChartLegendContent />} />
-                                <Line 
-                                  type="monotone" 
-                                  dataKey="weight" 
-                                  stroke={primaryColor}
-                                  strokeWidth={2}
-                                  name="weight"
-                                  dot={{ fill: primaryColor, r: 4 }}
-                                  activeDot={{ r: 6 }}
-                                />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} name="Weight (lbs)" />
                               </LineChart>
-                            </ChartContainer>
+                            </ResponsiveContainer>
                           </div>
                           <div>
                             <h3 className="font-semibold mb-4">Reps Progression</h3>
-                            <ChartContainer config={chartConfig} className="h-[300px]">
+                            <ResponsiveContainer width="100%" height={300}>
                               <BarChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis 
-                                  dataKey="date" 
-                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                  axisLine={{ stroke: 'hsl(var(--border))' }}
-                                />
-                                <YAxis 
-                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                  axisLine={{ stroke: 'hsl(var(--border))' }}
-                                />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <ChartLegend content={<ChartLegendContent />} />
-                                <Bar 
-                                  dataKey="reps" 
-                                  fill={primaryColor}
-                                  name="reps"
-                                  radius={[4, 4, 0, 0]}
-                                />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="reps" fill="hsl(var(--secondary))" name="Reps" />
                               </BarChart>
-                            </ChartContainer>
+                            </ResponsiveContainer>
                           </div>
                         </>
                       )}
@@ -593,65 +548,34 @@ export default function AnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workout Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-sm font-semibold text-muted-foreground py-2">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {calendarData.map(day => {
-                    const date = new Date(day.date);
-                    const dayOfWeek = date.getDay();
-                    const dayOfMonth = date.getDate();
-                    const tooltipText = day.workouts > 0
-                      ? `${date.toLocaleDateString()}: ${day.workoutDetails.map(w => {
-                          const weekText = w.week ? ` Week ${w.week}` : '';
-                          return `${w.programName} - ${w.dayName}${weekText}`;
-                        }).join(', ')}`
-                      : date.toLocaleDateString();
-                    const firstWorkout = day.workoutDetails[0];
-                    return (
-                      <div
-                        key={day.date}
-                        className={`aspect-square p-2 rounded-lg border flex flex-col ${
-                          day.workouts > 0 
-                            ? 'bg-primary/10 border-primary/30' 
-                            : 'bg-muted/30 border-border'
-                        }`}
-                        title={tooltipText}
-                      >
-                        <div className="text-xs font-medium mb-1">{dayOfMonth}</div>
-                        {day.workouts > 0 && firstWorkout && (
-                          <div className="text-xs text-primary flex-1 flex flex-col justify-start overflow-hidden">
-                            <div className="font-semibold truncate leading-tight" title={firstWorkout.programName}>
-                              {firstWorkout.programName}
-                            </div>
-                            <div className="text-[10px] opacity-80 truncate leading-tight mt-0.5" title={firstWorkout.dayName}>
-                              {firstWorkout.dayName}
-                              {firstWorkout.week && (
-                                <span className="ml-1 font-semibold">({firstWorkout.week})</span>
-                              )}
-                            </div>
-                            {day.workouts > 1 && (
-                              <div className="text-[10px] opacity-60 mt-0.5">
-                                +{day.workouts - 1} more
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Day Details - Left Side */}
+              <div className="order-2 lg:order-1">
+                <DayDetails
+                  date={selectedDate}
+                  workouts={selectedDate ? getWorkoutsForDate(selectedDate) : []}
+                  programs={programs.map(p => ({ id: p.id, name: p.name }))}
+                  exercises={exercises.map(e => ({ id: e.id, name: e.name }))}
+                />
+              </div>
+
+              {/* Calendar - Right Side */}
+              <div className="order-1 lg:order-2">
+                <Card className="w-full h-full">
+                  <CardContent className="p-4 md:p-6">
+                    <WorkoutCalendar
+                      month={currentMonth}
+                      onMonthChange={setCurrentMonth}
+                      workoutDays={calendarDataMap}
+                      selectedDate={selectedDate}
+                      onDayClick={(date) => {
+                        setSelectedDate(date);
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
@@ -856,6 +780,7 @@ export default function AnalyticsPage() {
             })()}
           </DialogContent>
         </Dialog>
+
       </div>
     </div>
   );
