@@ -448,7 +448,7 @@ function WorkoutContent() {
                             data={getExerciseData()}
                             highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
                             style={{ width: '150px', height: '210px' }}
-                            bodyColor="#e5e7eb"
+                            bodyColor="#6b7280"
                             type="anterior"
                             onClick={(muscleStats) => handleMuscleClick(muscleStats, 'anterior')}
                           />
@@ -468,7 +468,7 @@ function WorkoutContent() {
                               data={getExerciseData()}
                               highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
                               style={{ width: '150px', height: '210px' }}
-                              bodyColor="#e5e7eb"
+                              bodyColor="#6b7280"
                               type="posterior"
                               onClick={(muscleStats) => handleMuscleClick(muscleStats, 'posterior')}
                             />
@@ -534,9 +534,9 @@ function WorkoutContent() {
                       </div>
                     </div>
 
-                    {/* Exercise Images - Desktop only in flex */}
+                    {/* Exercise Images - Direct display (3xl and above) */}
                     {currentExercise.images.length > 0 && (
-                      <div className="hidden md:block flex-shrink-0">
+                      <div className="hidden 2xl:block flex-shrink-0">
                         <div className="grid grid-cols-2 gap-2">
                           {currentExercise.images.map((img, idx) => (
                             <div 
@@ -557,6 +557,46 @@ function WorkoutContent() {
                       </div>
                     )}
                   </div>
+
+                  {/* Exercise Images - Desktop dropdown (md to 2xl) */}
+                  {currentExercise.images.length > 0 && (
+                    <div className="hidden md:block 2xl:hidden mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowMobileImages(!showMobileImages)}
+                        className="w-full justify-between mb-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4" />
+                          <span>Exercise Images ({currentExercise.images.length})</span>
+                        </div>
+                        {showMobileImages ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {showMobileImages && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {currentExercise.images.map((img, idx) => (
+                            <div 
+                              key={idx} 
+                              className="relative w-full aspect-[850/567] rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setExpandedImage(img)}
+                            >
+                              <Image
+                                src={`/exercise-images/${img}`}
+                                alt={`${currentExercise.name} ${idx + 1}`}
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 768px) 100vw, 50vw"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Exercise Images - Mobile only, below muscles section */}
                   {currentExercise.images.length > 0 && (
