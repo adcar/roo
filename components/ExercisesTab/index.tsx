@@ -27,7 +27,7 @@ export default function ExercisesTab() {
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('builtin');
   const exercisesPerPage = 20;
 
   // Separate exercises into default and custom
@@ -110,7 +110,7 @@ export default function ExercisesTab() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <div className="flex flex-wrap gap-2 mb-8 items-center justify-between">
           <TabsList>
-            <TabsTrigger value="all">All Exercises ({defaultExercises.length})</TabsTrigger>
+            <TabsTrigger value="builtin">Built-in Exercises ({defaultExercises.length})</TabsTrigger>
             <TabsTrigger value="custom">Custom Exercises ({customExercises.length})</TabsTrigger>
           </TabsList>
           <div className="flex flex-wrap gap-2 items-center">
@@ -130,7 +130,7 @@ export default function ExercisesTab() {
           </div>
         </div>
 
-        <TabsContent value="all" className="mt-0">
+        <TabsContent value="builtin" className="mt-0">
           <ExerciseGrid
             exercises={filteredExercises}
             currentPage={currentPage}
