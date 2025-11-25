@@ -2,15 +2,30 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { ClipboardList, Dumbbell, BarChart3 } from 'lucide-react';
+import { ClipboardList, Dumbbell, BarChart3, Monitor, Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Determine active tab based on pathname
   const activeTab = pathname === '/exercises' ? 'exercises' : pathname === '/analytics' ? 'analytics' : 'programs';
@@ -48,19 +63,46 @@ export default function Navigation() {
             />
             <h1 className="text-3xl font-bold">’Roo</h1>
           </div>
-          <div className="flex items-center gap-4">
-            {session?.user && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {session.user.username || session.user.email}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  Sign out
+          {session?.user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {session.user.username || session.user.email}
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
-              </div>
-            )}
-            <ThemeToggle />
-          </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {mounted && (
+                  <>
+                    <DropdownMenuItem onClick={() => setTheme('light')}>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span>Light</span>
+                      {theme === 'light' && <span className="ml-auto">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme('dark')}>
+                      <Moon className="mr-2 h-4 w-4" />
+                      <span>Dark</span>
+                      {theme === 'dark' && <span className="ml-auto">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTheme('system')}>
+                      <Monitor className="mr-2 h-4 w-4" />
+                      <span>System</span>
+                      {theme === 'system' && <span className="ml-auto">✓</span>}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList>
