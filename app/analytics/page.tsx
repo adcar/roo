@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Trash2, X } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
@@ -48,6 +50,7 @@ function formatWeekLabel(date: Date): string {
 
 export default function AnalyticsPage() {
   const { exercises } = useExercises();
+  const { theme, resolvedTheme } = useTheme();
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>('all');
@@ -55,6 +58,33 @@ export default function AnalyticsPage() {
   const [viewMode, setViewMode] = useState<'overview' | 'exercise' | 'calendar' | 'history' | 'weekProgress'>('overview');
   const [loading, setLoading] = useState(true);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Chart color config - using chart-1 (primary) for both charts
+  const chartConfig = {
+    weight: {
+      label: 'Weight (lbs)',
+      theme: {
+        light: 'oklch(0.4341 0.0392 41.9938)', // chart-1 light
+        dark: 'oklch(0.9247 0.0524 66.1732)', // chart-1 dark
+      },
+    },
+    reps: {
+      label: 'Reps',
+      theme: {
+        light: 'oklch(0.4341 0.0392 41.9938)', // chart-1 light (same as weight)
+        dark: 'oklch(0.9247 0.0524 66.1732)', // chart-1 dark (same as weight)
+      },
+    },
+  };
+
+  // Get the primary chart color from config based on theme
+  const isDark = mounted && (resolvedTheme === 'dark' || theme === 'dark');
+  const primaryColor = isDark ? chartConfig.weight.theme.dark : chartConfig.weight.theme.light;
 
   const fetchData = () => {
     Promise.all([
@@ -440,29 +470,56 @@ export default function AnalyticsPage() {
                         <>
                           <div>
                             <h3 className="font-semibold mb-4">Weight Progression</h3>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ChartContainer config={chartConfig} className="h-[300px]">
                               <LineChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} name="Weight (lbs)" />
+                                <XAxis 
+                                  dataKey="date" 
+                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                                />
+                                <YAxis 
+                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="weight" 
+                                  stroke={primaryColor}
+                                  strokeWidth={2}
+                                  name="weight"
+                                  dot={{ fill: primaryColor, r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                />
                               </LineChart>
-                            </ResponsiveContainer>
+                            </ChartContainer>
                           </div>
                           <div>
                             <h3 className="font-semibold mb-4">Reps Progression</h3>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ChartContainer config={chartConfig} className="h-[300px]">
                               <BarChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="reps" fill="hsl(var(--secondary))" name="Reps" />
+                                <XAxis 
+                                  dataKey="date" 
+                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                                />
+                                <YAxis 
+                                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                <Bar 
+                                  dataKey="reps" 
+                                  fill={primaryColor}
+                                  name="reps"
+                                  radius={[4, 4, 0, 0]}
+                                />
                               </BarChart>
-                            </ResponsiveContainer>
+                            </ChartContainer>
                           </div>
                         </>
                       )}

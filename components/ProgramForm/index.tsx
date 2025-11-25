@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Hourglass } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import DayTabs from './DayTabs';
 import { ProgramFormProps } from './types';
@@ -27,7 +27,6 @@ export default function ProgramForm({
   const [days, setDays] = useState<WorkoutDay[]>(initialProgram?.days || []);
   const [isSplit, setIsSplit] = useState(initialProgram?.isSplit !== false); // Default to true for backward compatibility
   const [activeTab, setActiveTab] = useState<string>('');
-  const [showDayInput, setShowDayInput] = useState(false);
   const [newDayName, setNewDayName] = useState('');
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [editingWeek, setEditingWeek] = useState<'A' | 'B' | null>(null);
@@ -39,9 +38,9 @@ export default function ProgramForm({
   const isEditing = !!initialProgram?.id;
 
   useEffect(() => {
-    if (days.length > 0 && (!activeTab || !days.find(d => d.id === activeTab))) {
+    if (days.length > 0 && (!activeTab || (!days.find(d => d.id === activeTab) && activeTab !== 'add-day'))) {
       setActiveTab(days[0].id);
-    } else if (days.length === 0) {
+    } else if (days.length === 0 && activeTab !== 'add-day') {
       setActiveTab('');
     }
   }, [days, activeTab]);
@@ -86,12 +85,13 @@ export default function ProgramForm({
     };
   }, [programName, days, isSplit, isEditing, performAutoSave]);
 
-  const addDay = () => {
-    if (!newDayName.trim()) return;
+  const addDay = (name?: string) => {
+    const dayName = name || newDayName;
+    if (!dayName.trim()) return;
 
     const newDay: WorkoutDay = {
       id: Date.now().toString(),
-      name: newDayName,
+      name: dayName.trim(),
       weekA: [],
       weekB: [],
     };
@@ -99,7 +99,6 @@ export default function ProgramForm({
     setDays([...days, newDay]);
     setActiveTab(newDay.id);
     setNewDayName('');
-    setShowDayInput(false);
   };
 
   const handleDeleteClick = (dayId: string) => {
@@ -108,6 +107,14 @@ export default function ProgramForm({
     } else {
       toast('Cannot remove the last day', { variant: 'destructive' });
     }
+  };
+
+  const handleUpdateDayName = (dayId: string, newName: string) => {
+    if (!newName.trim()) return;
+    
+    setDays(days.map(day => 
+      day.id === dayId ? { ...day, name: newName.trim() } : day
+    ));
   };
 
   const confirmDeleteDay = () => {
@@ -307,7 +314,7 @@ export default function ProgramForm({
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 {autoSaving ? (
                   <span className="flex items-center gap-1">
-                    <span className="animate-spin">⏳</span>
+                    <Hourglass className="h-4 w-4 animate-spin" />
                     Saving...
                   </span>
                 ) : lastSaved ? (
@@ -358,63 +365,38 @@ export default function ProgramForm({
           </CardContent>
         </Card>
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4">
           <h2 className="text-2xl font-bold">Workout Days</h2>
-          {!showDayInput && (
-            <Button onClick={() => setShowDayInput(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Day
-            </Button>
-          )}
         </div>
 
-        {showDayInput && (
-          <Card className="mb-4">
-            <CardContent className="pt-6">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={newDayName}
-                  onChange={(e) => setNewDayName(e.target.value)}
-                  placeholder="e.g., Leg Day, Pull Day, Chest Day"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && addDay()}
-                />
-                <Button onClick={addDay} size="sm">Add</Button>
-                <Button onClick={() => { setShowDayInput(false); setNewDayName(''); }} variant="outline" size="sm">Cancel</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {days.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <p className="text-muted-foreground mb-4">No workout days added yet</p>
-              <Button onClick={() => setShowDayInput(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Your First Day
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <DayTabs
-              days={days}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onDeleteClick={handleDeleteClick}
-              getExerciseName={getExerciseName}
-              updateExercise={updateExercise}
-              removeExercise={removeExercise}
-              onAddExercise={(dayId, week) => {
-                setEditingDay(dayId);
-                setEditingWeek(week);
-              }}
-              isSplit={isSplit}
-            />
-          </DragDropContext>
-        )}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <DayTabs
+            days={days}
+            activeTab={activeTab || (days.length === 0 ? 'add-day' : '')}
+            onTabChange={(value) => {
+              setActiveTab(value);
+              if (value !== 'add-day') {
+                setNewDayName('');
+              }
+            }}
+            onDeleteClick={handleDeleteClick}
+            getExerciseName={getExerciseName}
+            updateExercise={updateExercise}
+            removeExercise={removeExercise}
+            onAddExercise={(dayId, week) => {
+              setEditingDay(dayId);
+              setEditingWeek(week);
+            }}
+            onAddDay={(name) => {
+              setNewDayName(name);
+              addDay();
+            }}
+            onUpdateDayName={handleUpdateDayName}
+            newDayName={newDayName}
+            onNewDayNameChange={setNewDayName}
+            isSplit={isSplit}
+          />
+        </DragDropContext>
 
         {/* Only show save button for new programs (no auto-save) */}
         {!isEditing && (
