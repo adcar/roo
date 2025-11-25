@@ -11,10 +11,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ALL_MUSCLE_OPTIONS } from '@/components/ExercisesTab/utils';
-import { Plus } from 'lucide-react';
+import { Plus, Info } from 'lucide-react';
 
 // Lazy load CreateExerciseDialog
 const CreateExerciseDialog = lazy(() => import('@/components/ExercisesTab/CreateExerciseDialog').then(module => ({ default: module.CreateExerciseDialog })));
+// Lazy load ExerciseDetailModal
+const ExerciseDetailModal = lazy(() => import('@/components/ExercisesTab/ExerciseDetailModal').then(module => ({ default: module.ExerciseDetailModal })));
 
 interface ExerciseSelectorProps {
   exercises: Exercise[];
@@ -30,6 +32,7 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
   const [selectedLevel, setSelectedLevel] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedExerciseForDetails, setSelectedExerciseForDetails] = useState<Exercise | null>(null);
   const exercisesPerPage = 20;
 
   // Use static list instead of computing from exercises to avoid lag
@@ -115,9 +118,20 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
               <Card
                 key={exercise.id}
                 onClick={() => onSelect(exercise.id)}
-                className="cursor-pointer hover:shadow-lg transition-all py-0"
+                className="cursor-pointer hover:shadow-lg transition-all py-0 relative"
               >
                 <CardContent className="p-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6 opacity-70 hover:opacity-100 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedExerciseForDetails(exercise);
+                    }}
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
                   {exercise.images[0] && (
                     <div className="relative w-full h-32 mb-3 rounded overflow-hidden bg-muted">
                       <Image
@@ -225,6 +239,15 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
                   }, 100);
                 }
               }}
+            />
+          </Suspense>
+        )}
+
+        {selectedExerciseForDetails && (
+          <Suspense fallback={null}>
+            <ExerciseDetailModal
+              exercise={selectedExerciseForDetails}
+              onClose={() => setSelectedExerciseForDetails(null)}
             />
           </Suspense>
         )}

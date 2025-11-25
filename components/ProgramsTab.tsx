@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Play, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Settings, Eye } from 'lucide-react';
 
 type WeekMapping = 'oddA' | 'oddB';
 
@@ -201,6 +201,11 @@ export default function ProgramsTab() {
                     <CardDescription>{program.days.length} day(s)</CardDescription>
                   </div>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/programs/${program.id}`}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
                     <Link href={`/programs/${program.id}/edit`}>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <Edit className="h-4 w-4" />
