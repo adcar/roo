@@ -44,7 +44,14 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8 rounded-lg border bg-card p-8 shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">’Roo</h1>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <img 
+              src="/logo.svg" 
+              alt="'Roo Logo" 
+              className="h-16 w-16"
+            />
+            <h1 className="text-3xl font-bold">’Roo</h1>
+          </div>
           <p className="mt-2 text-muted-foreground">Sign in to your account</p>
         </div>
 
