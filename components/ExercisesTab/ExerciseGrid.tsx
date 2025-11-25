@@ -10,6 +10,9 @@ interface ExerciseGridProps {
   exercisesPerPage: number;
   onPageChange: (page: number) => void;
   onExerciseClick: (exercise: Exercise) => void;
+  onEditClick?: (exercise: Exercise) => void;
+  onDeleteClick?: (exerciseId: string) => void;
+  showActions?: boolean;
 }
 
 export function ExerciseGrid({
@@ -18,6 +21,9 @@ export function ExerciseGrid({
   exercisesPerPage,
   onPageChange,
   onExerciseClick,
+  onEditClick,
+  onDeleteClick,
+  showActions = false,
 }: ExerciseGridProps) {
   const totalPages = Math.ceil(exercises.length / exercisesPerPage);
   const startIndex = (currentPage - 1) * exercisesPerPage;
@@ -31,6 +37,8 @@ export function ExerciseGrid({
             key={exercise.id}
             exercise={exercise}
             onClick={() => onExerciseClick(exercise)}
+            onEdit={showActions && exercise.isCustom && onEditClick ? () => onEditClick(exercise) : undefined}
+            onDelete={showActions && exercise.isCustom && onDeleteClick && exercise.id ? () => onDeleteClick(exercise.id) : undefined}
           />
         ))}
       </div>
@@ -62,4 +70,5 @@ export function ExerciseGrid({
     </>
   );
 }
+
 

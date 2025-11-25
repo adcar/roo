@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
+import { Exercise } from '@/types/exercise';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,23 +15,52 @@ import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 interface CreateExerciseDialogProps {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (exerciseId?: string) => void;
+  exercise?: Exercise | null;
 }
 
-export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExerciseDialogProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [primaryMuscles, setPrimaryMuscles] = useState<string[]>([]);
-  const [secondaryMuscles, setSecondaryMuscles] = useState<string[]>([]);
-  const [level, setLevel] = useState('beginner');
-  const [category, setCategory] = useState('strength');
-  const [equipment, setEquipment] = useState('');
-  const [instructions, setInstructions] = useState('');
+export function CreateExerciseDialog({ open, onClose, onSuccess, exercise }: CreateExerciseDialogProps) {
+  const isEditing = !!exercise;
+  const [name, setName] = useState(exercise?.name || '');
+  const [description, setDescription] = useState(exercise?.description || '');
+  const [primaryMuscles, setPrimaryMuscles] = useState<string[]>(exercise?.primaryMuscles || []);
+  const [secondaryMuscles, setSecondaryMuscles] = useState<string[]>(exercise?.secondaryMuscles || []);
+  const [level, setLevel] = useState(exercise?.level || 'beginner');
+  const [category, setCategory] = useState(exercise?.category || 'strength');
+  const [equipment, setEquipment] = useState(exercise?.equipment || '');
+  const [instructions, setInstructions] = useState(
+    Array.isArray(exercise?.instructions) ? exercise.instructions.join('\n') : (exercise?.instructions || '')
+  );
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPrimaryMuscle, setSelectedPrimaryMuscle] = useState('');
   const [selectedSecondaryMuscle, setSelectedSecondaryMuscle] = useState('');
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+
+  // Reset form when exercise changes
+  useEffect(() => {
+    if (exercise) {
+      setName(exercise.name || '');
+      setDescription(exercise.description || '');
+      setPrimaryMuscles(exercise.primaryMuscles || []);
+      setSecondaryMuscles(exercise.secondaryMuscles || []);
+      setLevel(exercise.level || 'beginner');
+      setCategory(exercise.category || 'strength');
+      setEquipment(exercise.equipment || '');
+      setInstructions(Array.isArray(exercise.instructions) ? exercise.instructions.join('\n') : (exercise.instructions || ''));
+      setImages([]);
+    } else {
+      setName('');
+      setDescription('');
+      setPrimaryMuscles([]);
+      setSecondaryMuscles([]);
+      setLevel('beginner');
+      setCategory('strength');
+      setEquipment('');
+      setInstructions('');
+      setImages([]);
+    }
+  }, [exercise]);
 
   const handleAddPrimaryMuscle = () => {
     if (selectedPrimaryMuscle && !primaryMuscles.includes(selectedPrimaryMuscle)) {
@@ -90,8 +120,12 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
         }
       });
 
-      const response = await fetch('/api/custom-exercises', {
-        method: 'POST',
+      const url = isEditing && exercise?.id 
+        ? `/api/custom-exercises/${exercise.id}`
+        : '/api/custom-exercises';
+      
+      const response = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         body: formData,
       });
 
@@ -100,7 +134,8 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
         throw new Error(error.error || 'Failed to create exercise');
       }
 
-      toast('Custom exercise created successfully!', { variant: 'success' });
+      const createdExercise = await response.json();
+      toast(isEditing ? 'Custom exercise updated successfully!' : 'Custom exercise created successfully!', { variant: 'success' });
       
       // Reset form
       setName('');
@@ -116,7 +151,7 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
       
       onClose();
       if (onSuccess) {
-        onSuccess();
+        onSuccess(createdExercise.id);
       }
     } catch (error) {
       console.error('Error creating exercise:', error);
@@ -130,7 +165,7 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Custom Exercise</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Custom Exercise' : 'Create Custom Exercise'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -202,6 +237,39 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
           </div>
 
           <div className={`${showAdvancedFields ? 'block' : 'hidden'} md:block space-y-4`}>
+            <div>
+              <Label>Secondary Muscles</Label>
+              <div className="flex gap-2 mb-2">
+                <Select value={selectedSecondaryMuscle} onValueChange={setSelectedSecondaryMuscle}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select muscle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_MUSCLE_OPTIONS.map(muscle => (
+                      <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" onClick={handleAddSecondaryMuscle} variant="outline">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {secondaryMuscles.map(muscle => (
+                  <div key={muscle} className="flex items-center gap-1 px-2 py-1 bg-secondary/10 rounded-md">
+                    <span className="text-sm">{muscle}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSecondaryMuscle(muscle)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="level">Level</Label>
@@ -248,39 +316,6 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
           </div>
 
           <div className={`${showAdvancedFields ? 'block' : 'hidden'} md:block`}>
-            <Label>Secondary Muscles</Label>
-            <div className="flex gap-2 mb-2">
-              <Select value={selectedSecondaryMuscle} onValueChange={setSelectedSecondaryMuscle}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select muscle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_MUSCLE_OPTIONS.map(muscle => (
-                    <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={handleAddSecondaryMuscle} variant="outline">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {secondaryMuscles.map(muscle => (
-                <div key={muscle} className="flex items-center gap-1 px-2 py-1 bg-secondary/10 rounded-md">
-                  <span className="text-sm">{muscle}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSecondaryMuscle(muscle)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className={`${showAdvancedFields ? 'block' : 'hidden'} md:block`}>
             <Label htmlFor="instructions">Instructions</Label>
             <Textarea
               id="instructions"
@@ -315,7 +350,7 @@ export function CreateExerciseDialog({ open, onClose, onSuccess }: CreateExercis
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Exercise'}
+              {isSubmitting ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Exercise' : 'Create Exercise')}
             </Button>
           </DialogFooter>
         </form>

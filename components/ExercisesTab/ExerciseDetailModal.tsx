@@ -12,9 +12,11 @@ import { mapMuscleName } from './utils';
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
   onClose: () => void;
+  onEdit?: (exercise: Exercise) => void;
+  onDelete?: (exerciseId: string) => void;
 }
 
-export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalProps) {
+export function ExerciseDetailModal({ exercise, onClose, onEdit, onDelete }: ExerciseDetailModalProps) {
   const [clickedMuscle, setClickedMuscle] = useState<{ muscle: string; view: 'anterior' | 'posterior' } | null>(null);
   const [highlightedMuscle, setHighlightedMuscle] = useState<string | null>(null);
 
@@ -231,6 +233,22 @@ export function ExerciseDetailModal({ exercise, onClose }: ExerciseDetailModalPr
           <Badge variant="secondary">Equipment: {exercise.equipment}</Badge>
           <Badge variant="secondary">Category: {exercise.category}</Badge>
         </div>
+
+        {/* Edit/Delete buttons for custom exercises */}
+        {(onEdit || onDelete) && exercise.isCustom && (
+          <div className="flex gap-2 mt-4">
+            {onEdit && (
+              <Button variant="outline" onClick={() => onEdit(exercise)}>
+                Edit Exercise
+              </Button>
+            )}
+            {onDelete && exercise.id && (
+              <Button variant="destructive" onClick={() => exercise.id && onDelete(exercise.id)}>
+                Delete Exercise
+              </Button>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

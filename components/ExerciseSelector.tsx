@@ -21,9 +21,10 @@ interface ExerciseSelectorProps {
   open?: boolean;
   onSelect: (exerciseId: string) => void;
   onClose: () => void;
+  onExerciseCreated?: (exerciseId?: string) => void;
 }
 
-export default function ExerciseSelector({ exercises, open = true, onSelect, onClose }: ExerciseSelectorProps) {
+export default function ExerciseSelector({ exercises, open = true, onSelect, onClose, onExerciseCreated }: ExerciseSelectorProps) {
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -210,10 +211,19 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
             <CreateExerciseDialog
               open={showCreateDialog}
               onClose={() => setShowCreateDialog(false)}
-              onSuccess={() => {
+              onSuccess={async (exerciseId) => {
                 setShowCreateDialog(false);
-                // Refresh exercises by reloading the page
-                window.location.reload();
+                // Refresh exercises without reloading the page
+                if (onExerciseCreated) {
+                  await onExerciseCreated(exerciseId);
+                }
+                // Auto-select the newly created exercise
+                if (exerciseId) {
+                  // Wait a bit for exercises to refresh, then select
+                  setTimeout(() => {
+                    onSelect(exerciseId);
+                  }, 100);
+                }
               }}
             />
           </Suspense>

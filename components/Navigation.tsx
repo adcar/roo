@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { ClipboardList, Dumbbell, BarChart3 } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -56,9 +57,18 @@ export default function Navigation() {
         </div>
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList>
-            <TabsTrigger value="programs" className="cursor-pointer">Programs</TabsTrigger>
-            <TabsTrigger value="exercises" className="cursor-pointer">Exercise Library</TabsTrigger>
-            <TabsTrigger value="analytics" className="cursor-pointer">Analytics</TabsTrigger>
+            <TabsTrigger value="programs" className="cursor-pointer">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Programs
+            </TabsTrigger>
+            <TabsTrigger value="exercises" className="cursor-pointer">
+              <Dumbbell className="mr-2 h-4 w-4" />
+              Exercise Library
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="cursor-pointer">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Analytics
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

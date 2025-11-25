@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Exercise } from '@/types/exercise';
 
 export function useExercises() {
@@ -8,27 +8,33 @@ export function useExercises() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/exercises.json').then(res => res.json()),
-      fetch('/api/custom-exercises').then(res => res.json()).catch(() => [])
-    ])
-      .then(([defaultExercises, customExercises]) => {
-        // Mark custom exercises and combine
-        const allExercises = [
-          ...defaultExercises,
-          ...customExercises.map((ex: any) => ({ ...ex, isCustom: true }))
-        ];
-        setExercises(allExercises);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+  const fetchExercises = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [defaultExercises, customExercises] = await Promise.all([
+        fetch('/exercises.json').then(res => res.json()),
+        fetch('/api/custom-exercises').then(res => res.json()).catch(() => [])
+      ]);
+      
+      // Mark custom exercises and combine
+      const allExercises = [
+        ...defaultExercises,
+        ...customExercises.map((ex: any) => ({ ...ex, isCustom: true }))
+      ];
+      setExercises(allExercises);
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load exercises');
+      setLoading(false);
+    }
   }, []);
 
-  return { exercises, loading, error };
+  useEffect(() => {
+    fetchExercises();
+  }, [fetchExercises]);
+
+  return { exercises, loading, error, refetch: fetchExercises };
 }
 
 export function filterExercises(

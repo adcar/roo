@@ -5,18 +5,35 @@ import Image from 'next/image';
 import { Exercise } from '@/types/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Edit2, Trash2 } from 'lucide-react';
 
 export const ExerciseCard = memo(function ExerciseCard({ 
   exercise, 
-  onClick 
+  onClick,
+  onEdit,
+  onDelete,
 }: { 
   exercise: Exercise & { isCustom?: boolean }; 
   onClick: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const isCustom = exercise.isCustom;
+  
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.();
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+  };
+
   return (
     <Card
-      className={`cursor-pointer hover:shadow-lg transition-all py-0 ${isCustom ? 'border-2 border-primary ring-2 ring-primary/20' : ''}`}
+      className="cursor-pointer hover:shadow-lg transition-all py-0 relative"
       onClick={onClick}
     >
       <CardHeader className="p-0 relative">
@@ -24,6 +41,32 @@ export const ExerciseCard = memo(function ExerciseCard({
           <Badge className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground">
             Custom
           </Badge>
+        )}
+        {(onEdit || onDelete) && (
+          <div className="absolute top-2 left-2 z-10 flex gap-1">
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 w-7 p-0"
+                onClick={handleEdit}
+                title="Edit exercise"
+              >
+                <Edit2 className="h-3 w-3" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 w-7 p-0"
+                onClick={handleDelete}
+                title="Delete exercise"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         )}
         {exercise.images[0] && (
           <div className="relative w-full h-40 rounded-t-lg overflow-hidden bg-muted">

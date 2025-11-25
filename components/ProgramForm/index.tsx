@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Program, WorkoutDay, ProgramExercise } from '@/types/exercise';
 import { useExercises } from '@/hooks/useExercises';
@@ -22,7 +22,7 @@ export default function ProgramForm({
   title,
   saveButtonText = 'Save Program'
 }: ProgramFormProps) {
-  const { exercises } = useExercises();
+  const { exercises, refetch: refetchExercises } = useExercises();
   const [programName, setProgramName] = useState(initialProgram?.name || '');
   const [days, setDays] = useState<WorkoutDay[]>(initialProgram?.days || []);
   const [isSplit, setIsSplit] = useState(initialProgram?.isSplit !== false); // Default to true for backward compatibility
@@ -33,6 +33,10 @@ export default function ProgramForm({
   const [editingWeek, setEditingWeek] = useState<'A' | 'B' | null>(null);
   const [dayToDelete, setDayToDelete] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isEditing = !!initialProgram?.id;
 
   useEffect(() => {
     if (days.length > 0 && (!activeTab || !days.find(d => d.id === activeTab))) {
@@ -41,6 +45,46 @@ export default function ProgramForm({
       setActiveTab('');
     }
   }, [days, activeTab]);
+
+  // Auto-save function (only for editing existing programs)
+  const performAutoSave = useCallback(async () => {
+    if (!isEditing || !initialProgram?.id || !programName.trim() || days.length === 0) {
+      return;
+    }
+
+    setAutoSaving(true);
+    try {
+      await onSave({ name: programName, days, isSplit });
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Error auto-saving program:', error);
+      // Don't show toast for auto-save failures to avoid annoying the user
+    } finally {
+      setAutoSaving(false);
+    }
+  }, [isEditing, initialProgram?.id, programName, days, isSplit, onSave]);
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (!isEditing) return;
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout for auto-save (500ms after last change for faster response)
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, 500);
+
+    // Cleanup on unmount
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [programName, days, isSplit, isEditing, performAutoSave]);
 
   const addDay = () => {
     if (!newDayName.trim()) return;
@@ -257,7 +301,21 @@ export default function ProgramForm({
               Back
             </Button>
           </Link>
-          <h1 className="text-4xl font-bold">{title}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-bold">{title}</h1>
+            {isEditing && (
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                {autoSaving ? (
+                  <span className="flex items-center gap-1">
+                    <span className="animate-spin">⏳</span>
+                    Saving...
+                  </span>
+                ) : lastSaved ? (
+                  <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
 
         <Card className="mb-6">
@@ -358,17 +416,15 @@ export default function ProgramForm({
           </DragDropContext>
         )}
 
-        <div className="flex gap-4">
-          <Button onClick={handleSave} size="lg" disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? 'Saving...' : saveButtonText}
-          </Button>
-          <Link href={cancelUrl}>
-            <Button variant="outline" size="lg">
-              Cancel
+        {/* Only show save button for new programs (no auto-save) */}
+        {!isEditing && (
+          <div className="flex gap-4">
+            <Button onClick={handleSave} size="lg" disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? 'Saving...' : saveButtonText}
             </Button>
-          </Link>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Pre-render ExerciseSelector so it's ready instantly when modal opens */}
@@ -383,6 +439,10 @@ export default function ProgramForm({
         onClose={() => {
           setEditingDay(null);
           setEditingWeek(null);
+        }}
+        onExerciseCreated={async (exerciseId) => {
+          await refetchExercises();
+          // The ExerciseSelector will auto-select the exercise after refetch
         }}
       />
 
