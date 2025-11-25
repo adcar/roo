@@ -7,17 +7,74 @@ import { Program } from '@/types/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Play } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Play, Settings } from 'lucide-react';
+
+const WEEK_MAPPING_KEY = 'weekMapping';
+
+type WeekMapping = 'oddA' | 'oddB';
+
+// Get ISO week number of the year (1-53)
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+// Get week mapping preference from localStorage
+function getWeekMapping(): WeekMapping {
+  if (typeof window === 'undefined') return 'oddA';
+  const stored = localStorage.getItem(WEEK_MAPPING_KEY);
+  return (stored === 'oddA' || stored === 'oddB') ? stored : 'oddA';
+}
+
+// Get current week letter based on week number and mapping preference
+function getCurrentWeekLetter(mapping: WeekMapping = 'oddA'): 'A' | 'B' {
+  const weekNumber = getISOWeekNumber(new Date());
+  const isOdd = weekNumber % 2 === 1;
+  
+  if (mapping === 'oddA') {
+    return isOdd ? 'A' : 'B';
+  } else {
+    return isOdd ? 'B' : 'A';
+  }
+}
+
+// Get current week number
+function getCurrentWeekNumber(): number {
+  return getISOWeekNumber(new Date());
+}
 
 export default function ProgramsTab() {
   const router = useRouter();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>('A');
+  const [currentWeekNumber, setCurrentWeekNumber] = useState<number>(getCurrentWeekNumber());
+  const [weekMapping, setWeekMapping] = useState<WeekMapping>(getWeekMapping());
+  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter(weekMapping));
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     fetchPrograms();
-  }, []);
+    // Update week number and selected week when component mounts or date changes
+    const updateWeek = () => {
+      const weekNum = getCurrentWeekNumber();
+      const weekLetter = getCurrentWeekLetter(weekMapping);
+      setCurrentWeekNumber(weekNum);
+      setSelectedWeek(weekLetter);
+    };
+    updateWeek();
+  }, [weekMapping]);
+
+  const handleMappingChange = (mapping: WeekMapping) => {
+    setWeekMapping(mapping);
+    localStorage.setItem(WEEK_MAPPING_KEY, mapping);
+    const weekLetter = getCurrentWeekLetter(mapping);
+    setSelectedWeek(weekLetter);
+    setSettingsOpen(false);
+  };
 
   const fetchPrograms = async () => {
     try {
@@ -66,13 +123,23 @@ export default function ProgramsTab() {
         <div className="flex items-center gap-4">
           {programs.some(p => p.isSplit !== false) && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Week:</span>
+              <span className="text-sm text-muted-foreground">
+                Week {currentWeekNumber} {selectedWeek}:
+              </span>
               <Tabs value={selectedWeek} onValueChange={(value) => setSelectedWeek(value as 'A' | 'B')}>
                 <TabsList>
                   <TabsTrigger value="A">A</TabsTrigger>
                   <TabsTrigger value="B">B</TabsTrigger>
                 </TabsList>
               </Tabs>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
           )}
           <Link href="/programs/new">
@@ -157,6 +224,65 @@ export default function ProgramsTab() {
           ))}
         </div>
       )}
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Week Mapping</DialogTitle>
+            <DialogDescription>
+              Configure how week numbers map to Week A and Week B
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <button
+              onClick={() => handleMappingChange('oddA')}
+              className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                weekMapping === 'oddA'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50 hover:bg-accent/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">Odd weeks → Week A</span>
+                  <span className="text-sm text-muted-foreground">Even weeks → Week B</span>
+                </div>
+                {weekMapping === 'oddA' && (
+                  <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+                {weekMapping !== 'oddA' && (
+                  <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
+                )}
+              </div>
+            </button>
+            <button
+              onClick={() => handleMappingChange('oddB')}
+              className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                weekMapping === 'oddB'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50 hover:bg-accent/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">Odd weeks → Week B</span>
+                  <span className="text-sm text-muted-foreground">Even weeks → Week A</span>
+                </div>
+                {weekMapping === 'oddB' && (
+                  <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+                {weekMapping !== 'oddB' && (
+                  <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
+                )}
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
