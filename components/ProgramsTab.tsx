@@ -144,7 +144,7 @@ export default function ProgramsTab() {
           <p className="text-muted-foreground">{programs.length} program(s) created</p>
         </div>
         <div className="flex items-center gap-4">
-          {programs.some(p => p.isSplit !== false) && (
+          {programs.some(p => p.isSplit === true) && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 Week {currentWeekNumber} {selectedWeek}:
