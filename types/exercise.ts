@@ -32,6 +32,7 @@ export interface Program {
   id: string;
   name: string;
   days: WorkoutDay[];
+  isSplit?: boolean; // If true, program alternates between week A and B. Defaults to true for backward compatibility
   createdAt: string;
   updatedAt: string;
 }

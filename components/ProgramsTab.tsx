@@ -64,15 +64,17 @@ export default function ProgramsTab() {
           <p className="text-muted-foreground">{programs.length} program(s) created</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Week:</span>
-            <Tabs value={selectedWeek} onValueChange={(value) => setSelectedWeek(value as 'A' | 'B')}>
-              <TabsList>
-                <TabsTrigger value="A">A</TabsTrigger>
-                <TabsTrigger value="B">B</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          {programs.some(p => p.isSplit !== false) && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Week:</span>
+              <Tabs value={selectedWeek} onValueChange={(value) => setSelectedWeek(value as 'A' | 'B')}>
+                <TabsList>
+                  <TabsTrigger value="A">A</TabsTrigger>
+                  <TabsTrigger value="B">B</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
           <Link href="/programs/new">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -136,10 +138,12 @@ export default function ProgramsTab() {
                       <div className="flex-1">
                         <div className="font-semibold text-sm">{day.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          Week A: {day.weekA.length} • Week B: {day.weekB.length}
+                          {program.isSplit !== false
+                            ? `Week A: ${day.weekA.length} • Week B: ${day.weekB.length}`
+                            : `${day.weekA.length} exercise${day.weekA.length !== 1 ? 's' : ''}`}
                         </div>
                       </div>
-                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${selectedWeek}`} onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${program.isSplit !== false ? selectedWeek : 'A'}`} onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" className="ml-2">
                           <Play className="mr-2 h-4 w-4" />
                           Start

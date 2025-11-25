@@ -87,64 +87,67 @@ export default function ProgramViewPage() {
         </div>
 
         <div className="space-y-6">
-          {program.days.map(day => (
-            <Card key={day.id}>
-              <CardContent className="p-6">
-                <h2 className="text-2xl font-bold mb-4">{day.name}</h2>
+          {program.days.map(day => {
+            const isSplit = program.isSplit !== false; // Default to true for backward compatibility
+            return (
+              <Card key={day.id}>
+                <CardContent className="p-6">
+                  <h2 className="text-2xl font-bold mb-4">{day.name}</h2>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  {(['A', 'B'] as const).map(week => (
-                    <div key={week} className="bg-muted rounded-lg p-4">
-                      <h3 className="text-xl font-semibold mb-4">Week {week}</h3>
+                  <div className={`grid gap-6 ${isSplit ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                    {(['A', 'B'] as const).filter(week => isSplit || week === 'A').map(week => (
+                      <div key={week} className="bg-muted rounded-lg p-4">
+                        {isSplit && <h3 className="text-xl font-semibold mb-4">Week {week}</h3>}
 
-                      <div className="space-y-3">
-                        {day[week === 'A' ? 'weekA' : 'weekB'].map((programExercise, idx) => {
-                          const exercise = getExercise(programExercise.exerciseId);
-                          if (!exercise) return null;
+                        <div className="space-y-3">
+                          {day[week === 'A' ? 'weekA' : 'weekB'].map((programExercise, idx) => {
+                            const exercise = getExercise(programExercise.exerciseId);
+                            if (!exercise) return null;
 
-                          return (
-                            <div key={idx} className="bg-background rounded-lg p-3 border">
-                              <div className="flex gap-3">
-                                {exercise.images[0] && (
-                                  <div className="relative w-20 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
-                                    <Image
-                                      src={`/exercise-images/${exercise.images[0]}`}
-                                      alt={exercise.name}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                )}
-                                <div className="flex-1">
-                                  <h4 className="font-semibold mb-1">{exercise.name}</h4>
-                                  <div className="flex gap-3 text-sm text-muted-foreground">
-                                    {programExercise.sets && <span>{programExercise.sets} sets</span>}
-                                    {programExercise.reps && <span>× {programExercise.reps} reps</span>}
-                                    {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {exercise.primaryMuscles.map(muscle => (
-                                      <span key={muscle} className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-full">
-                                        {muscle}
-                                      </span>
-                                    ))}
+                            return (
+                              <div key={idx} className="bg-background rounded-lg p-3 border">
+                                <div className="flex gap-3">
+                                  {exercise.images[0] && (
+                                    <div className="relative w-20 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
+                                      <Image
+                                        src={`/exercise-images/${exercise.images[0]}`}
+                                        alt={exercise.name}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold mb-1">{exercise.name}</h4>
+                                    <div className="flex gap-3 text-sm text-muted-foreground">
+                                      {programExercise.sets && <span>{programExercise.sets} sets</span>}
+                                      {programExercise.reps && <span>× {programExercise.reps} reps</span>}
+                                      {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {exercise.primaryMuscles.map(muscle => (
+                                        <span key={muscle} className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-full">
+                                          {muscle}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
 
-                        {day[week === 'A' ? 'weekA' : 'weekB'].length === 0 && (
-                          <p className="text-muted-foreground text-center py-4">No exercises for this week</p>
-                        )}
+                          {day[week === 'A' ? 'weekA' : 'weekB'].length === 0 && (
+                            <p className="text-muted-foreground text-center py-4">No exercises for this week</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>

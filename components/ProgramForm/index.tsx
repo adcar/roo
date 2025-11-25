@@ -25,6 +25,7 @@ export default function ProgramForm({
   const { exercises } = useExercises();
   const [programName, setProgramName] = useState(initialProgram?.name || '');
   const [days, setDays] = useState<WorkoutDay[]>(initialProgram?.days || []);
+  const [isSplit, setIsSplit] = useState(initialProgram?.isSplit !== false); // Default to true for backward compatibility
   const [activeTab, setActiveTab] = useState<string>('');
   const [showDayInput, setShowDayInput] = useState(false);
   const [newDayName, setNewDayName] = useState('');
@@ -236,7 +237,7 @@ export default function ProgramForm({
 
     setSaving(true);
     try {
-      await onSave({ name: programName, days });
+      await onSave({ name: programName, days, isSplit });
       toast('Program saved successfully', { variant: 'success' });
     } catch (error) {
       console.error('Error saving program:', error);
@@ -271,6 +272,31 @@ export default function ProgramForm({
               placeholder="e.g., Upper/Lower Split, PPL Program"
               className="text-lg"
             />
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Program Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isSplit"
+                checked={isSplit}
+                onChange={(e) => setIsSplit(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="isSplit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Split Program (Alternate between Week A and Week B)
+              </label>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {isSplit 
+                ? 'This program alternates between two different workout weeks (A and B).'
+                : 'This program uses the same exercises every week (no alternation).'}
+            </p>
           </CardContent>
         </Card>
 
@@ -327,6 +353,7 @@ export default function ProgramForm({
                 setEditingDay(dayId);
                 setEditingWeek(week);
               }}
+              isSplit={isSplit}
             />
           </DragDropContext>
         )}

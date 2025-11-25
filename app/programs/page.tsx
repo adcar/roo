@@ -58,7 +58,9 @@ export default function ProgramsPage() {
                     <div key={day.id} className="text-sm">
                       <span className="font-semibold">{day.name}</span>
                       <div className="text-muted-foreground text-xs mt-1">
-                        Week A: {day.weekA.length} exercises • Week B: {day.weekB.length} exercises
+                        {program.isSplit !== false
+                          ? `Week A: ${day.weekA.length} exercises • Week B: ${day.weekB.length} exercises`
+                          : `${day.weekA.length} exercise${day.weekA.length !== 1 ? 's' : ''}`}
                       </div>
                     </div>
                   ))}

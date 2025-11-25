@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
       date: string; 
       workouts: number; 
       exercises: number;
-      workoutDetails: Array<{ programName: string; dayName: string }>;
+      workoutDetails: Array<{ programName: string; dayName: string; week?: string }>;
     }>();
     
     filteredLogs.forEach(log => {
@@ -276,8 +276,13 @@ export default function AnalyticsPage() {
       const programName = program?.name || `Program ${log.programId.slice(-6)}`;
       const workoutDay = program?.days.find(d => d.id === log.dayId);
       const dayName = workoutDay?.name || `Day ${log.dayId.slice(-6)}`;
+      const isSplit = program?.isSplit !== false; // Default to true for backward compatibility
       
-      day.workoutDetails.push({ programName, dayName });
+      day.workoutDetails.push({ 
+        programName, 
+        dayName,
+        week: isSplit ? log.week : undefined
+      });
     });
     
     return Array.from(calendarMap.values()).sort((a, b) => 
@@ -549,7 +554,10 @@ export default function AnalyticsPage() {
                     const dayOfWeek = date.getDay();
                     const dayOfMonth = date.getDate();
                     const tooltipText = day.workouts > 0
-                      ? `${date.toLocaleDateString()}: ${day.workoutDetails.map(w => `${w.programName} - ${w.dayName}`).join(', ')}`
+                      ? `${date.toLocaleDateString()}: ${day.workoutDetails.map(w => {
+                          const weekText = w.week ? ` Week ${w.week}` : '';
+                          return `${w.programName} - ${w.dayName}${weekText}`;
+                        }).join(', ')}`
                       : date.toLocaleDateString();
                     const firstWorkout = day.workoutDetails[0];
                     return (
@@ -570,6 +578,9 @@ export default function AnalyticsPage() {
                             </div>
                             <div className="text-[10px] opacity-80 truncate leading-tight mt-0.5" title={firstWorkout.dayName}>
                               {firstWorkout.dayName}
+                              {firstWorkout.week && (
+                                <span className="ml-1 font-semibold">({firstWorkout.week})</span>
+                              )}
                             </div>
                             {day.workouts > 1 && (
                               <div className="text-[10px] opacity-60 mt-0.5">

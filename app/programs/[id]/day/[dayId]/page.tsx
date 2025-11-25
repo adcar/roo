@@ -92,74 +92,81 @@ export default function DayViewPage() {
           <Link href={`/workout?programId=${params.id}&dayId=${day.id}&week=A`}>
             <Button size="lg">
               <Play className="mr-2 h-4 w-4" />
-              Start Week A
+              Start Workout
             </Button>
           </Link>
-          <Link href={`/workout?programId=${params.id}&dayId=${day.id}&week=B`}>
-            <Button size="lg" variant="outline">
-              <Play className="mr-2 h-4 w-4" />
-              Start Week B
-            </Button>
-          </Link>
+          {program.isSplit !== false && (
+            <Link href={`/workout?programId=${params.id}&dayId=${day.id}&week=B`}>
+              <Button size="lg" variant="outline">
+                <Play className="mr-2 h-4 w-4" />
+                Start Week B
+              </Button>
+            </Link>
+          )}
         </div>
 
         <Card>
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {(['A', 'B'] as const).map(week => (
-                <div key={week} className="bg-muted rounded-lg p-4">
-                  <h3 className="text-xl font-semibold mb-4">Week {week}</h3>
+            {(() => {
+              const isSplit = program.isSplit !== false; // Default to true for backward compatibility
+              return (
+                <div className={`grid gap-6 ${isSplit ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                  {(['A', 'B'] as const).filter(week => isSplit || week === 'A').map(week => (
+                    <div key={week} className="bg-muted rounded-lg p-4">
+                      {isSplit && <h3 className="text-xl font-semibold mb-4">Week {week}</h3>}
 
-                  <div className="space-y-3">
-                    {day[week === 'A' ? 'weekA' : 'weekB'].map((programExercise, idx) => {
-                      const exercise = getExercise(programExercise.exerciseId);
-                      if (!exercise) return null;
+                      <div className="space-y-3">
+                        {day[week === 'A' ? 'weekA' : 'weekB'].map((programExercise, idx) => {
+                          const exercise = getExercise(programExercise.exerciseId);
+                          if (!exercise) return null;
 
-                      return (
-                        <div key={idx} className="bg-background rounded-lg p-3 border">
-                          <div className="flex gap-3">
-                            {exercise.images[0] && (
-                              <div className="relative w-20 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
-                                <Image
-                                  src={`/exercise-images/${exercise.images[0]}`}
-                                  alt={exercise.name}
-                                  fill
-                                  className="object-cover"
-                                />
-                              </div>
-                            )}
-                            <div className="flex-1">
-                              <h4 className="font-semibold mb-1">{exercise.name}</h4>
-                              <div className="flex gap-3 text-sm text-muted-foreground">
-                                {programExercise.sets && <span>{programExercise.sets} sets</span>}
-                                {programExercise.reps && <span>× {programExercise.reps} reps</span>}
-                                {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
-                              </div>
-                              {programExercise.notes && (
-                                <div className="text-sm text-muted-foreground mt-1 italic">
-                                  {programExercise.notes}
+                          return (
+                            <div key={idx} className="bg-background rounded-lg p-3 border">
+                              <div className="flex gap-3">
+                                {exercise.images[0] && (
+                                  <div className="relative w-20 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
+                                    <Image
+                                      src={`/exercise-images/${exercise.images[0]}`}
+                                      alt={exercise.name}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex-1">
+                                  <h4 className="font-semibold mb-1">{exercise.name}</h4>
+                                  <div className="flex gap-3 text-sm text-muted-foreground">
+                                    {programExercise.sets && <span>{programExercise.sets} sets</span>}
+                                    {programExercise.reps && <span>× {programExercise.reps} reps</span>}
+                                    {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
+                                  </div>
+                                  {programExercise.notes && (
+                                    <div className="text-sm text-muted-foreground mt-1 italic">
+                                      {programExercise.notes}
+                                    </div>
+                                  )}
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {exercise.primaryMuscles.map(muscle => (
+                                      <span key={muscle} className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-full">
+                                        {muscle}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
-                              )}
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {exercise.primaryMuscles.map(muscle => (
-                                  <span key={muscle} className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-full">
-                                    {muscle}
-                                  </span>
-                                ))}
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
 
-                    {day[week === 'A' ? 'weekA' : 'weekB'].length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No exercises for this week</p>
-                    )}
-                  </div>
+                        {day[week === 'A' ? 'weekA' : 'weekB'].length === 0 && (
+                          <p className="text-muted-foreground text-center py-4">No exercises for this week</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>

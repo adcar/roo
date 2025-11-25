@@ -45,6 +45,17 @@ function WorkoutContent() {
             return;
           }
           setProgram(data);
+          // If program is not split, always use week A
+          const isSplit = data.isSplit !== false;
+          if (!isSplit) {
+            setSelectedWeek('A');
+          } else {
+            // Check URL params for week
+            const weekParam = searchParams?.get('week');
+            if (weekParam === 'A' || weekParam === 'B') {
+              setSelectedWeek(weekParam);
+            }
+          }
           if (dayId) {
             const day = data.days?.find((d: WorkoutDay) => d.id === dayId);
             if (day) setSelectedDay(day);
@@ -56,11 +67,14 @@ function WorkoutContent() {
           console.error('Error loading program:', error);
         });
     }
-  }, [programId, dayId]);
+  }, [programId, dayId, searchParams]);
 
   useEffect(() => {
     if (selectedDay && programId && dayId) {
-      const exercises = selectedWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
+      // For non-split programs, always use weekA
+      const isSplit = program?.isSplit !== false;
+      const effectiveWeek = isSplit ? selectedWeek : 'A';
+      const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
       
       // Fetch previous workout logs for this program/day/week
       fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
@@ -72,8 +86,14 @@ function WorkoutContent() {
             return;
           }
           // Filter logs for the same week and sort by date (most recent first)
+          // For non-split programs, treat all logs as week A
+          const isSplit = program?.isSplit !== false;
+          const effectiveWeek = isSplit ? selectedWeek : 'A';
           const weekLogs = previousLogs
-            .filter(log => log.week === selectedWeek)
+            .filter(log => {
+              if (!isSplit) return true; // For non-split, get all logs
+              return log.week === selectedWeek;
+            })
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           
           // Get the most recent log if it exists
@@ -153,7 +173,11 @@ function WorkoutContent() {
   }, [selectedDay, selectedWeek, programId, dayId]);
 
   const currentExercises = selectedDay
-    ? (selectedWeek === 'A' ? selectedDay.weekA : selectedDay.weekB)
+    ? (() => {
+        const isSplit = program?.isSplit !== false;
+        const effectiveWeek = isSplit ? selectedWeek : 'A';
+        return effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
+      })()
     : [];
 
   const currentProgramExercise = currentExercises[currentExerciseIndex];
@@ -333,10 +357,12 @@ function WorkoutContent() {
 
     setIsFinishing(true);
 
+    // For non-split programs, always save as week A
+    const isSplit = program.isSplit !== false;
     const workoutLog = {
       programId: program.id,
       dayId: selectedDay.id,
-      week: selectedWeek,
+      week: isSplit ? selectedWeek : 'A',
       date: new Date().toISOString(),
       exercises: exerciseLogs,
     };
@@ -417,7 +443,10 @@ function WorkoutContent() {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold">{program.name}</h1>
-          <p className="text-muted-foreground">{selectedDay.name} • Week {selectedWeek}</p>
+          <p className="text-muted-foreground">
+            {selectedDay.name}
+            {program.isSplit !== false && ` • Week ${selectedWeek}`}
+          </p>
         </div>
 
         <Card className="mb-6">

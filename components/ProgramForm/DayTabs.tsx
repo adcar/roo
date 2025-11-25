@@ -15,6 +15,7 @@ interface DayTabsProps {
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: any) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
   onAddExercise: (dayId: string, week: 'A' | 'B') => void;
+  isSplit?: boolean;
 }
 
 export default function DayTabs({
@@ -26,6 +27,7 @@ export default function DayTabs({
   updateExercise,
   removeExercise,
   onAddExercise,
+  isSplit = true,
 }: DayTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="mb-6">
@@ -65,8 +67,8 @@ export default function DayTabs({
           <TabsContent key={day.id} value={day.id}>
             <Card>
               <CardContent className="pt-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  {(['A', 'B'] as const).map(week => {
+                <div className={`grid gap-4 ${isSplit ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                  {(['A', 'B'] as const).filter(week => isSplit || week === 'A').map(week => {
                     const exercises = day[week === 'A' ? 'weekA' : 'weekB'];
                     const weekIds = week === 'A' ? weekAIds : weekBIds;
                     
