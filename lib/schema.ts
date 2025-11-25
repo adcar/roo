@@ -33,3 +33,9 @@ export const customExercises = sqliteTable('custom_exercises', {
   isCustom: integer('is_custom').default(1),
   userId: text('user_id').notNull(), // User who owns this exercise
 });
+
+export const userSettings = sqliteTable('user_settings', {
+  userId: text('user_id').primaryKey(), // User ID (references user.id)
+  weekMapping: text('week_mapping').notNull().default('oddA'), // 'oddA' or 'oddB'
+  updatedAt: text('updated_at').notNull(),
+});

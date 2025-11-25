@@ -10,8 +10,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2, Play, Settings } from 'lucide-react';
 
-const WEEK_MAPPING_KEY = 'weekMapping';
-
 type WeekMapping = 'oddA' | 'oddB';
 
 // Get ISO week number of the year (1-53)
@@ -21,13 +19,6 @@ function getISOWeekNumber(date: Date): number {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
-
-// Get week mapping preference from localStorage
-function getWeekMapping(): WeekMapping {
-  if (typeof window === 'undefined') return 'oddA';
-  const stored = localStorage.getItem(WEEK_MAPPING_KEY);
-  return (stored === 'oddA' || stored === 'oddB') ? stored : 'oddA';
 }
 
 // Get current week letter based on week number and mapping preference
@@ -52,12 +43,13 @@ export default function ProgramsTab() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentWeekNumber, setCurrentWeekNumber] = useState<number>(getCurrentWeekNumber());
-  const [weekMapping, setWeekMapping] = useState<WeekMapping>(getWeekMapping());
-  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter(weekMapping));
+  const [weekMapping, setWeekMapping] = useState<WeekMapping>('oddA');
+  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter('oddA'));
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     fetchPrograms();
+    fetchWeekMapping();
     // Update week number and selected week when component mounts or date changes
     const updateWeek = () => {
       const weekNum = getCurrentWeekNumber();
@@ -68,12 +60,43 @@ export default function ProgramsTab() {
     updateWeek();
   }, [weekMapping]);
 
-  const handleMappingChange = (mapping: WeekMapping) => {
-    setWeekMapping(mapping);
-    localStorage.setItem(WEEK_MAPPING_KEY, mapping);
-    const weekLetter = getCurrentWeekLetter(mapping);
-    setSelectedWeek(weekLetter);
-    setSettingsOpen(false);
+  const fetchWeekMapping = async () => {
+    try {
+      const res = await fetch('/api/user-settings/week-mapping');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.weekMapping === 'oddA' || data.weekMapping === 'oddB') {
+          setWeekMapping(data.weekMapping);
+          const weekLetter = getCurrentWeekLetter(data.weekMapping);
+          setSelectedWeek(weekLetter);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching week mapping:', error);
+    }
+  };
+
+  const handleMappingChange = async (mapping: WeekMapping) => {
+    try {
+      const res = await fetch('/api/user-settings/week-mapping', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ weekMapping: mapping }),
+      });
+
+      if (res.ok) {
+        setWeekMapping(mapping);
+        const weekLetter = getCurrentWeekLetter(mapping);
+        setSelectedWeek(weekLetter);
+        setSettingsOpen(false);
+      } else {
+        console.error('Error updating week mapping:', await res.text());
+      }
+    } catch (error) {
+      console.error('Error updating week mapping:', error);
+    }
   };
 
   const fetchPrograms = async () => {

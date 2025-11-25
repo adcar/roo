@@ -146,6 +146,14 @@ export async function getDb() {
     } catch (e) {
       // Column already exists, ignore
     }
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id TEXT PRIMARY KEY,
+        week_mapping TEXT NOT NULL DEFAULT 'oddA',
+        updated_at TEXT NOT NULL
+      );
+    `);
   }
 
   return db;
