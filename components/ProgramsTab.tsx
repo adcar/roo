@@ -205,9 +205,21 @@ export default function ProgramsTab() {
                       <div className="flex-1">
                         <div className="font-semibold text-sm">{day.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {program.isSplit !== false
-                            ? `Week A: ${day.weekA.length} • Week B: ${day.weekB.length}`
-                            : `${day.weekA.length} exercise${day.weekA.length !== 1 ? 's' : ''}`}
+                          {program.isSplit !== false ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className={selectedWeek === 'A' ? 'font-semibold text-primary' : ''}>
+                                Week A: {day.weekA.length}
+                                {selectedWeek === 'A' && <span className="ml-1">●</span>}
+                              </span>
+                              <span>•</span>
+                              <span className={selectedWeek === 'B' ? 'font-semibold text-primary' : ''}>
+                                Week B: {day.weekB.length}
+                                {selectedWeek === 'B' && <span className="ml-1">●</span>}
+                              </span>
+                            </span>
+                          ) : (
+                            `${day.weekA.length} exercise${day.weekA.length !== 1 ? 's' : ''}`
+                          )}
                         </div>
                       </div>
                       <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${program.isSplit !== false ? selectedWeek : 'A'}`} onClick={(e) => e.stopPropagation()}>
