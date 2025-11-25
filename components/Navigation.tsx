@@ -44,7 +44,7 @@ export default function Navigation() {
             <img 
               src="/logo.svg" 
               alt="'Roo Logo" 
-              className="h-8 w-8"
+              className="h-16 w-16"
             />
             <h1 className="text-3xl font-bold">’Roo</h1>
           </div>
