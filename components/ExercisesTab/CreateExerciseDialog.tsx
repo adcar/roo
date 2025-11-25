@@ -273,7 +273,7 @@ export function CreateExerciseDialog({ open, onClose, onSuccess, exercise }: Cre
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="level">Level</Label>
-                <Select value={level} onValueChange={setLevel}>
+                <Select value={level} onValueChange={(value) => setLevel(value as "beginner" | "intermediate" | "expert")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -287,7 +287,7 @@ export function CreateExerciseDialog({ open, onClose, onSuccess, exercise }: Cre
 
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={setCategory}>
+                <Select value={category} onValueChange={(value) => setCategory(value as Exercise['category'])}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

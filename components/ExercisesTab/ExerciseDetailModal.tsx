@@ -6,6 +6,7 @@ import { Exercise } from '@/types/exercise';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { BodyHighlighter, IExerciseData, Muscle } from '@/components/BodyHighlighter';
 import { mapMuscleName } from './utils';
 

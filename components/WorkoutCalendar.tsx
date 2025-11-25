@@ -204,7 +204,6 @@ export function WorkoutCalendar({
               onDayClick?.(date);
             }
           }}
-          captionLayout="buttons"
           className="w-full [--cell-size:clamp(2rem,3vw,3rem)]"
           classNames={{
             root: "w-full",

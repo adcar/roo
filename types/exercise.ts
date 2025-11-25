@@ -1,6 +1,7 @@
 export interface Exercise {
   id: string;
   name: string;
+  description?: string;
   force: "pull" | "push" | "static" | null;
   level: "beginner" | "intermediate" | "expert";
   mechanic: "compound" | "isolation" | null;
@@ -10,6 +11,7 @@ export interface Exercise {
   instructions: string[];
   category: "strength" | "stretching" | "plyometrics" | "strongman" | "powerlifting" | "cardio" | "olympic weightlifting";
   images: string[];
+  isCustom?: boolean;
 }
 
 export interface ProgramExercise {

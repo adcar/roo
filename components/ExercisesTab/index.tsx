@@ -188,10 +188,8 @@ export default function ExercisesTab() {
             setShowCreateDialog(true);
           }
         }}
-        onDelete={(exercise) => {
-          if (exercise.isCustom && exercise.id) {
-            handleDeleteClick(exercise.id);
-          }
+        onDelete={(exerciseId) => {
+          handleDeleteClick(exerciseId);
         }}
       />
 
