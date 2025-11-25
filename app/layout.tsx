@@ -19,6 +19,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "’Roo",
   description: "Build and track your workout programs",
+  icons: {
+    icon: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

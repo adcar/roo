@@ -40,7 +40,14 @@ export default function Navigation() {
     <div className="border-b">
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold">🦘 ’Roo</h1>
+          <div className="flex items-center gap-2">
+            <img 
+              src="/logo.svg" 
+              alt="'Roo Logo" 
+              className="h-8 w-8"
+            />
+            <h1 className="text-3xl font-bold">’Roo</h1>
+          </div>
           <div className="flex items-center gap-4">
             {session?.user && (
               <div className="flex items-center gap-2">
