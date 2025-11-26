@@ -60,7 +60,7 @@ function WorkoutDayButton({
       data-range-middle={modifiers.range_middle}
       data-has-workout={hasWorkout}
       className={cn(
-        "relative flex aspect-square w-full min-h-[70px] md:min-h-[85px] lg:min-h-[100px] max-w-full flex-col items-start justify-start gap-1 p-1.5 md:p-2 text-left font-normal transition-all overflow-hidden",
+        "relative flex aspect-square w-full min-h-0 h-auto max-w-full flex-col items-start justify-start gap-0.5 md:gap-1 p-1 md:p-1.5 lg:p-2 text-left font-normal transition-all overflow-hidden",
         "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
         "focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         isToday && "bg-accent/50 font-semibold ring-2 ring-primary/20",
@@ -75,7 +75,7 @@ function WorkoutDayButton({
       {...props}
     >
       <span className={cn(
-        "text-xs md:text-sm font-semibold leading-none",
+        "text-[10px] md:text-xs lg:text-sm font-semibold leading-none",
         isToday && !modifiers.selected && "text-primary",
         modifiers.selected && "text-foreground"
       )}>
@@ -214,9 +214,9 @@ export function WorkoutCalendar({
             caption_label: "hidden",
             button_previous: "hidden",
             button_next: "hidden",
-            table: "w-full border-separate border-spacing-1 md:border-spacing-1.5 table-fixed",
+            table: "w-full border-separate border-spacing-0.5 md:border-spacing-1 lg:border-spacing-1.5 table-fixed",
             weekdays: "w-full",
-            weekday: "text-center text-xs font-semibold text-muted-foreground py-2 md:py-3 px-1 flex-1 min-w-0",
+            weekday: "text-center text-[10px] md:text-xs font-semibold text-muted-foreground py-1 md:py-2 lg:py-3 px-0.5 md:px-1 flex-1 min-w-0",
             week: "w-full",
             day: "w-[14.28%] p-0 align-top",
           }}

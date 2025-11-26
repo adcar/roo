@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
         </div>
 
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="mb-6">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 !inline-flex !w-full !h-auto flex-wrap gap-2 p-1 items-stretch !justify-start">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="exercise">Exercise Details</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
