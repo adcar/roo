@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
@@ -47,7 +48,15 @@ export default function Navigation() {
     }
   };
 
+  const triggerHapticFeedback = () => {
+    // Check if Vibration API is available (mobile devices)
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10); // Short vibration (10ms)
+    }
+  };
+
   const handleNavClick = (route: string) => {
+    triggerHapticFeedback();
     router.push(route);
   };
 
@@ -75,14 +84,14 @@ export default function Navigation() {
       <div className="border-b">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
               <img 
                 src="/logo.svg" 
                 alt="'Roo Logo" 
                 className="h-16 w-16"
               />
               <h1 className="text-3xl font-bold">'Roo</h1>
-            </div>
+            </Link>
             {session?.user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
