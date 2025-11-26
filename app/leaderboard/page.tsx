@@ -201,7 +201,7 @@ export default function LeaderboardPage() {
               • The leaderboard resets each month
             </p>
             <p>
-              • <strong>Streaks:</strong> Complete 4+ workouts per week to maintain your streak. Streaks are tracked across all your workouts and shown publicly!
+              • <strong>Streaks:</strong> Complete 2+ workouts per week to maintain your streak. Streaks are tracked across all your workouts and shown publicly!
             </p>
           </CardContent>
         </Card>

@@ -59,7 +59,7 @@ function calculateStreaks(workoutDates: string[]): { currentStreak: number; long
   });
 
   const qualifyingWeeks = Array.from(weekMap.entries())
-    .filter(([_, count]) => count >= 4)
+    .filter(([_, count]) => count >= 2)
     .map(([weekKey, _]) => weekKey)
     .sort();
 
