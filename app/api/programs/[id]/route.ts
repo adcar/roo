@@ -35,6 +35,7 @@ export async function GET(
     return NextResponse.json({
       ...program,
       days: normalizeExerciseOrder(days),
+      isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined, // Convert integer to boolean, undefined if null
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -71,6 +72,7 @@ export async function PUT(
     const program = {
       name: body.name,
       days: JSON.stringify(body.days),
+      isSplit: body.isSplit !== undefined ? (body.isSplit ? 1 : 0) : null,
       updatedAt: new Date().toISOString(),
     };
 
@@ -86,6 +88,7 @@ export async function PUT(
       id,
       ...program,
       days: JSON.parse(program.days),
+      isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

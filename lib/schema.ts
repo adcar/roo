@@ -4,6 +4,7 @@ export const programs = sqliteTable('programs', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   days: text('days').notNull(), // JSON string
+  isSplit: integer('is_split'), // 1 for true, 0 for false, null for undefined (defaults to true for backward compatibility)
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   userId: text('user_id').notNull(), // User who owns this program

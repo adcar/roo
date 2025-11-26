@@ -104,6 +104,19 @@ export async function getDb() {
       // Column already exists or table doesn't exist yet, ignore
     }
 
+    // Try to add is_split column if it doesn't exist (migration)
+    try {
+      const tableInfo = await client.execute(`PRAGMA table_info(programs);`);
+      const hasIsSplit = tableInfo.rows.some((row: any) => row.name === 'is_split');
+      if (!hasIsSplit) {
+        await client.execute(`ALTER TABLE programs ADD COLUMN is_split INTEGER;`);
+        // Existing programs default to true (1) for backward compatibility
+        await client.execute(`UPDATE programs SET is_split = 1 WHERE is_split IS NULL;`);
+      }
+    } catch (e) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
     await client.execute(`
       CREATE TABLE IF NOT EXISTS workout_logs (
         id TEXT PRIMARY KEY,
