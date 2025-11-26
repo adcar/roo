@@ -148,6 +148,7 @@ export async function GET(request: Request) {
     const db = await getDb();
     
     // Fetch all workout logs for the user (or all users if userId not specified)
+    // NOTE: Streaks count ANY workout date, regardless of exercise count (even a single exercise like a run counts)
     let logs;
     if (userId) {
       logs = await db

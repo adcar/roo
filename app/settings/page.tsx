@@ -145,7 +145,7 @@ export default function SettingsPage() {
                 Workout Streak
               </CardTitle>
               <CardDescription>
-                Track your consistency - maintain 2+ workouts per week to keep your streak alive!
+                Track your consistency - maintain 2+ workouts per week to keep your streak alive! Any workout counts, even a single exercise like a run. Streaks never reset and last forever.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-4 text-center">
-                Complete at least 2 workouts per week to maintain your streak. Streaks are public on the leaderboard!
+                Complete at least 2 workouts per week to maintain your streak. Any workout counts - even a single exercise! Streaks never reset and last forever. Streaks are public on the leaderboard!
               </p>
             </CardContent>
           </Card>
