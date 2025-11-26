@@ -295,7 +295,7 @@ export default function ProgramViewPage() {
 
             {exerciseData.length > 0 ? (
               <div className="flex flex-col md:flex-row items-start gap-6">
-                <div className="flex-shrink-0 flex gap-4">
+                <div className="flex-shrink-0 flex gap-2 md:gap-4 justify-center md:justify-start w-full md:w-auto">
                   {/* Front View */}
                   <div>
                     <div className="text-xs text-muted-foreground mb-2 text-center">Front</div>
