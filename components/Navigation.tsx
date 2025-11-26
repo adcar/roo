@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { ClipboardList, Dumbbell, BarChart3, Monitor, Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
+import { ClipboardList, Dumbbell, BarChart3, Trophy, Monitor, Moon, Sun, LogOut, ChevronDown, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,10 @@ export default function Navigation() {
   }, []);
 
   // Determine active tab based on pathname
-  const activeTab = pathname === '/exercises' ? 'exercises' : pathname === '/analytics' ? 'analytics' : 'programs';
+  const activeTab = pathname === '/exercises' ? 'exercises' 
+    : pathname === '/analytics' ? 'analytics' 
+    : pathname === '/leaderboard' ? 'leaderboard'
+    : 'programs';
 
   const handleTabChange = (value: string) => {
     if (value === 'programs') {
@@ -37,6 +40,8 @@ export default function Navigation() {
       router.push('/exercises');
     } else if (value === 'analytics') {
       router.push('/analytics');
+    } else if (value === 'leaderboard') {
+      router.push('/leaderboard');
     }
   };
 
@@ -96,6 +101,11 @@ export default function Navigation() {
                   </>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sign out</span>
@@ -117,6 +127,10 @@ export default function Navigation() {
             <TabsTrigger value="analytics" className="cursor-pointer">
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="leaderboard" className="cursor-pointer">
+              <Trophy className="mr-2 h-4 w-4" />
+              Leaderboard
             </TabsTrigger>
           </TabsList>
         </Tabs>

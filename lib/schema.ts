@@ -38,5 +38,6 @@ export const customExercises = sqliteTable('custom_exercises', {
 export const userSettings = sqliteTable('user_settings', {
   userId: text('user_id').primaryKey(), // User ID (references user.id)
   weekMapping: text('week_mapping').notNull().default('oddA'), // 'oddA' or 'oddB'
+  inspirationQuote: text('inspiration_quote'), // Optional inspiration quote for leaderboard
   updatedAt: text('updated_at').notNull(),
 });

@@ -164,9 +164,21 @@ export async function getDb() {
       CREATE TABLE IF NOT EXISTS user_settings (
         user_id TEXT PRIMARY KEY,
         week_mapping TEXT NOT NULL DEFAULT 'oddA',
+        inspiration_quote TEXT,
         updated_at TEXT NOT NULL
       );
     `);
+
+    // Try to add inspiration_quote column if it doesn't exist (migration)
+    try {
+      const tableInfo = await client.execute(`PRAGMA table_info(user_settings);`);
+      const hasInspirationQuote = tableInfo.rows.some((row: any) => row.name === 'inspiration_quote');
+      if (!hasInspirationQuote) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN inspiration_quote TEXT;`);
+      }
+    } catch (e) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
   }
 
   return db;
