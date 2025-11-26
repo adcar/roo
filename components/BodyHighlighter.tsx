@@ -12,8 +12,9 @@ interface BodyHighlighterProps extends Omit<ModelProps, 'highlightedColors'> {
   highlightedColors?: string[];
 }
 
-export function BodyHighlighter({ highlightedColors: customColors, ...props }: BodyHighlighterProps) {
+export function BodyHighlighter({ highlightedColors: customColors, bodyColor, ...props }: BodyHighlighterProps) {
   const [themeColors, setThemeColors] = useState<string[]>(['#ef4444', '#f59e0b', '#10b981']);
+  const [computedBodyColor, setComputedBodyColor] = useState<string | undefined>(bodyColor);
 
   useEffect(() => {
     // If custom colors are provided, use them
@@ -98,9 +99,41 @@ export function BodyHighlighter({ highlightedColors: customColors, ...props }: B
     return () => observer.disconnect();
   }, [customColors]);
 
+  // Compute background color from CSS variables if not explicitly provided
+  useEffect(() => {
+    if (bodyColor) {
+      setComputedBodyColor(bodyColor);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+
+    const updateBodyColor = () => {
+      const tempEl = document.createElement('div');
+      tempEl.className = 'bg-muted';
+      tempEl.style.position = 'absolute';
+      tempEl.style.visibility = 'hidden';
+      document.body.appendChild(tempEl);
+      
+      const backgroundColor = getComputedStyle(tempEl).backgroundColor;
+      document.body.removeChild(tempEl);
+      
+      setComputedBodyColor(backgroundColor || undefined);
+    };
+
+    updateBodyColor();
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(updateBodyColor);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    
+    return () => observer.disconnect();
+  }, [bodyColor]);
+
   return (
     <Model
       highlightedColors={themeColors}
+      bodyColor={computedBodyColor}
       {...props}
     />
   );

@@ -103,7 +103,6 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDelete }: Exe
                   <BodyHighlighter
                     data={exerciseData}
                     style={{ width: '150px', height: '210px' }}
-                    bodyColor="#e5e7eb"
                     type="anterior"
                     onClick={(muscleStats: any) => {
                       const clickedMuscleName = muscleStats.muscle || muscleStats.name;
@@ -134,7 +133,6 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDelete }: Exe
                     <BodyHighlighter
                       data={exerciseData}
                       style={{ width: '150px', height: '210px' }}
-                      bodyColor="#e5e7eb"
                       type="posterior"
                       onClick={(muscleStats: any) => {
                         const clickedMuscleName = muscleStats.muscle || muscleStats.name;

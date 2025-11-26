@@ -30,6 +30,7 @@ function WorkoutContent() {
   const [highlightedMuscle, setHighlightedMuscle] = useState<string | null>(null);
   const [clickedMuscle, setClickedMuscle] = useState<{ muscle: string; view: 'anterior' | 'posterior' } | null>(null);
   const [themeColors, setThemeColors] = useState<string[]>(['#ef4444', '#f59e0b', '#10b981']);
+  const [bodyColor, setBodyColor] = useState<string>('#6b7280');
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const [showMobileImages, setShowMobileImages] = useState(false);
@@ -299,25 +300,40 @@ function WorkoutContent() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Get computed colors from CSS variables
-    const root = document.documentElement;
-    const primaryVar = getComputedStyle(root).getPropertyValue('--primary').trim();
-    const secondaryVar = getComputedStyle(root).getPropertyValue('--secondary').trim();
+    const updateColors = () => {
+      // Get computed colors from CSS variables
+      const root = document.documentElement;
+      const primaryVar = getComputedStyle(root).getPropertyValue('--primary').trim();
+      const secondaryVar = getComputedStyle(root).getPropertyValue('--secondary').trim();
+      
+      // Create temporary elements to get computed RGB values
+      const tempEl = document.createElement('div');
+      tempEl.style.position = 'absolute';
+      tempEl.style.visibility = 'hidden';
+      tempEl.style.color = primaryVar;
+      document.body.appendChild(tempEl);
+      const primaryColor = getComputedStyle(tempEl).color;
+      
+      tempEl.style.color = secondaryVar;
+      const secondaryColor = getComputedStyle(tempEl).color;
+      
+      // Get background color (using muted for slightly different appearance)
+      tempEl.className = 'bg-muted';
+      const backgroundColor = getComputedStyle(tempEl).backgroundColor;
+      
+      document.body.removeChild(tempEl);
+      
+      setThemeColors([primaryColor || '#ef4444', secondaryColor || '#f59e0b', '#10b981']);
+      setBodyColor(backgroundColor || '#6b7280');
+    };
+
+    updateColors();
     
-    // Create temporary elements to get computed RGB values
-    const tempEl = document.createElement('div');
-    tempEl.style.position = 'absolute';
-    tempEl.style.visibility = 'hidden';
-    tempEl.style.color = primaryVar;
-    document.body.appendChild(tempEl);
-    const primaryColor = getComputedStyle(tempEl).color;
+    // Listen for theme changes
+    const observer = new MutationObserver(updateColors);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
     
-    tempEl.style.color = secondaryVar;
-    const secondaryColor = getComputedStyle(tempEl).color;
-    
-    document.body.removeChild(tempEl);
-    
-    setThemeColors([primaryColor || '#ef4444', secondaryColor || '#f59e0b', '#10b981']);
+    return () => observer.disconnect();
   }, []);
 
   // Check if we need to show the back view (posterior)
@@ -477,7 +493,7 @@ function WorkoutContent() {
                             data={getExerciseData()}
                             highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
                             style={{ width: '150px', height: '210px' }}
-                            bodyColor="#6b7280"
+                            bodyColor={bodyColor}
                             type="anterior"
                             onClick={(muscleStats) => handleMuscleClick(muscleStats, 'anterior')}
                           />
@@ -497,7 +513,7 @@ function WorkoutContent() {
                               data={getExerciseData()}
                               highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
                               style={{ width: '150px', height: '210px' }}
-                              bodyColor="#6b7280"
+                              bodyColor={bodyColor}
                               type="posterior"
                               onClick={(muscleStats) => handleMuscleClick(muscleStats, 'posterior')}
                             />

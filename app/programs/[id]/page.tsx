@@ -302,7 +302,6 @@ export default function ProgramViewPage() {
                     <BodyHighlighter
                       data={exerciseData}
                       style={{ width: '200px', height: '280px' }}
-                      bodyColor="#e5e7eb"
                       type="anterior"
                     />
                   </div>
@@ -313,7 +312,6 @@ export default function ProgramViewPage() {
                       <BodyHighlighter
                         data={exerciseData}
                         style={{ width: '200px', height: '280px' }}
-                        bodyColor="#e5e7eb"
                         type="posterior"
                       />
                     </div>
