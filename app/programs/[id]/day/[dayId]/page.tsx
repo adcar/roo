@@ -76,7 +76,7 @@ export default function DayViewPage() {
             </Button>
           </Link>
           <div className="mb-2">
-            <Link href="/">
+            <Link href="/programs">
               <Button variant="ghost" size="sm" className="mb-2">
                 ← All Programs
               </Button>

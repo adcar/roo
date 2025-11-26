@@ -226,8 +226,8 @@ export default function ProgramViewPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="text-2xl font-bold mb-4">Program not found</div>
-          <Link href="/">
-            <Button variant="outline">Back to Home</Button>
+          <Link href="/programs">
+            <Button variant="outline">Back to Programs</Button>
           </Link>
         </div>
       </div>
@@ -238,7 +238,7 @@ export default function ProgramViewPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <Link href="/">
+          <Link href="/programs">
             <Button variant="ghost" className="mb-4">
               ← Back to Programs
             </Button>

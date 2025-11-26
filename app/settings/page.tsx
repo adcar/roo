@@ -8,24 +8,42 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
-import { Settings } from 'lucide-react';
+import { Settings, Flame } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { authClient } from '@/lib/auth-client';
 
 export default function SettingsPage() {
   const [weekMapping, setWeekMapping] = useState<string>('oddA');
   const [inspirationQuote, setInspirationQuote] = useState<string>('');
+  const [currentStreak, setCurrentStreak] = useState<number>(0);
+  const [longestStreak, setLongestStreak] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const { data: session } = authClient.useSession();
 
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const response = await fetch('/api/user-settings');
-        if (!response.ok) {
+        const userId = session?.user?.id;
+        
+        const [settingsResponse, streaksResponse] = await Promise.all([
+          fetch('/api/user-settings'),
+          userId ? fetch(`/api/streaks?userId=${userId}`) : Promise.resolve(null),
+        ]);
+        
+        if (!settingsResponse.ok) {
           throw new Error('Failed to fetch settings');
         }
-        const data = await response.json();
-        setWeekMapping(data.weekMapping || 'oddA');
-        setInspirationQuote(data.inspirationQuote || '');
+        const settingsData = await settingsResponse.json();
+        setWeekMapping(settingsData.weekMapping || 'oddA');
+        setInspirationQuote(settingsData.inspirationQuote || '');
+        
+        if (streaksResponse && streaksResponse.ok) {
+          const streaksData = await streaksResponse.json();
+          setCurrentStreak(streaksData.currentStreak || 0);
+          setLongestStreak(streaksData.longestStreak || 0);
+        }
       } catch (error) {
         console.error('Error fetching settings:', error);
         toast('Failed to load settings', {
@@ -37,8 +55,10 @@ export default function SettingsPage() {
       }
     }
 
-    fetchSettings();
-  }, []);
+    if (session) {
+      fetchSettings();
+    }
+  }, [session]);
 
   async function handleSave() {
     try {
@@ -115,6 +135,35 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Flame className="h-5 w-5 text-orange-500" />
+                Workout Streak
+              </CardTitle>
+              <CardDescription>
+                Track your consistency - maintain 4+ workouts per week to keep your streak alive!
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold text-orange-500">{currentStreak}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Current Streak</div>
+                  <div className="text-xs text-muted-foreground mt-1">weeks</div>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold">{longestStreak}</div>
+                  <div className="text-sm text-muted-foreground mt-1">Longest Streak</div>
+                  <div className="text-xs text-muted-foreground mt-1">weeks</div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                Complete at least 4 workouts per week to maintain your streak. Streaks are public on the leaderboard!
+              </p>
             </CardContent>
           </Card>
 

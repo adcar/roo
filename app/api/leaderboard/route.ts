@@ -9,6 +9,118 @@ interface LeaderboardEntry {
   email: string;
   inspirationQuote: string | null;
   workoutCount: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+// Streak calculation helpers
+// Uses local time to avoid timezone issues
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayNum = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - dayNum);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function getWeekKey(date: Date): string {
+  // Use local date to get the correct week
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const year = localDate.getFullYear();
+  const weekNum = getISOWeekNumber(localDate);
+  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+function getPreviousWeekKey(weekKey: string): string {
+  const [yearStr, weekStr] = weekKey.split('-W');
+  let year = parseInt(yearStr);
+  let weekNum = parseInt(weekStr);
+  
+  weekNum--;
+  if (weekNum < 1) {
+    weekNum = 52;
+    year--;
+  }
+  
+  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+function calculateStreaks(workoutDates: string[]): { currentStreak: number; longestStreak: number } {
+  if (workoutDates.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  const weekMap = new Map<string, number>();
+  
+  workoutDates.forEach(dateStr => {
+    const date = new Date(dateStr);
+    const weekKey = getWeekKey(date);
+    weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
+  });
+
+  const qualifyingWeeks = Array.from(weekMap.entries())
+    .filter(([_, count]) => count >= 4)
+    .map(([weekKey, _]) => weekKey)
+    .sort();
+
+  if (qualifyingWeeks.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  // Calculate longest streak
+  let longestStreak = 1;
+  let currentLongest = 1;
+  
+  for (let i = 1; i < qualifyingWeeks.length; i++) {
+    const prevWeek = qualifyingWeeks[i - 1];
+    const currWeek = qualifyingWeeks[i];
+    const expectedPrevWeek = getPreviousWeekKey(currWeek);
+    
+    if (prevWeek === expectedPrevWeek) {
+      currentLongest++;
+      longestStreak = Math.max(longestStreak, currentLongest);
+    } else {
+      currentLongest = 1;
+    }
+  }
+
+  // Calculate current streak
+  const today = new Date();
+  const currentWeekKey = getWeekKey(today);
+  const currentWeekCount = weekMap.get(currentWeekKey) || 0;
+  
+  // Find the most recent completed qualifying week (exclude current week)
+  let mostRecentQualifyingWeek: string | null = null;
+  
+  // Check previous weeks only (skip current week)
+  let checkWeek = getPreviousWeekKey(currentWeekKey);
+  for (let i = 0; i < 52; i++) {
+    if (qualifyingWeeks.includes(checkWeek)) {
+      mostRecentQualifyingWeek = checkWeek;
+      break;
+    }
+    checkWeek = getPreviousWeekKey(checkWeek);
+  }
+
+  let currentStreak = 0;
+  
+  // Only count completed weeks (don't count current week)
+  if (mostRecentQualifyingWeek) {
+    currentStreak = 1;
+    let checkWeek = mostRecentQualifyingWeek;
+    
+    for (let i = 0; i < 100; i++) {
+      const prevWeek = getPreviousWeekKey(checkWeek);
+      if (qualifyingWeeks.includes(prevWeek)) {
+        currentStreak++;
+        checkWeek = prevWeek;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { currentStreak, longestStreak };
 }
 
 export async function GET(request: Request) {
@@ -125,11 +237,39 @@ export async function GET(request: Request) {
       ])
     );
 
+    // Calculate streaks for all qualifying users
+    const allLogsForStreaks = await db
+      .select({
+        userId: schema.workoutLogs.userId,
+        date: schema.workoutLogs.date,
+      })
+      .from(schema.workoutLogs);
+
+    // Group workouts by user
+    const userWorkouts = new Map<string, string[]>();
+    allLogsForStreaks.forEach(log => {
+      if (userIds.has(log.userId)) {
+        if (!userWorkouts.has(log.userId)) {
+          userWorkouts.set(log.userId, []);
+        }
+        userWorkouts.get(log.userId)!.push(log.date);
+      }
+    });
+
+    // Calculate streaks
+    const streaksMap = new Map<string, { currentStreak: number; longestStreak: number }>();
+    userWorkouts.forEach((dates, userId) => {
+      const streakData = calculateStreaks(dates);
+      streaksMap.set(userId, streakData);
+    });
+
     // Build leaderboard entries
     const leaderboard: LeaderboardEntry[] = qualifyingUsers
       .map(({ userId, count }) => {
         const user = userMap.get(userId);
         if (!user) return null;
+        
+        const streakData = streaksMap.get(userId) || { currentStreak: 0, longestStreak: 0 };
         
         return {
           userId,
@@ -137,6 +277,8 @@ export async function GET(request: Request) {
           email: user.email,
           inspirationQuote: user.inspirationQuote,
           workoutCount: count,
+          currentStreak: streakData.currentStreak,
+          longestStreak: streakData.longestStreak,
         };
       })
       .filter((entry): entry is LeaderboardEntry => entry !== null)

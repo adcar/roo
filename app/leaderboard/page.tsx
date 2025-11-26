@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Award, Users } from 'lucide-react';
+import { Trophy, Medal, Award, Users, Flame } from 'lucide-react';
 
 interface LeaderboardEntry {
   userId: string;
@@ -11,6 +11,8 @@ interface LeaderboardEntry {
   email: string;
   inspirationQuote: string | null;
   workoutCount: number;
+  currentStreak: number;
+  longestStreak: number;
 }
 
 function getMedalIcon(position: number) {
@@ -147,8 +149,16 @@ export default function LeaderboardPage() {
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-lg truncate">
-                          {entry.username || entry.email.split('@')[0]}
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-lg truncate">
+                            {entry.username || entry.email.split('@')[0]}
+                          </div>
+                          {entry.currentStreak > 0 && (
+                            <div className="flex items-center gap-1" title={`${entry.currentStreak} week streak`}>
+                              <Flame className="h-4 w-4 text-orange-500" />
+                              <span className="text-xs font-semibold text-orange-500">{entry.currentStreak}</span>
+                            </div>
+                          )}
                         </div>
                         {entry.inspirationQuote && (
                           <div className="text-sm text-muted-foreground italic mt-1">
@@ -189,6 +199,9 @@ export default function LeaderboardPage() {
             </p>
             <p>
               • The leaderboard resets each month
+            </p>
+            <p>
+              • <strong>Streaks:</strong> Complete 4+ workouts per week to maintain your streak. Streaks are tracked across all your workouts and shown publicly!
             </p>
           </CardContent>
         </Card>
