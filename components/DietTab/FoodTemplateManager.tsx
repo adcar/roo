@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { FoodTemplate } from './types';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 
@@ -72,6 +73,7 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
     } finally {
       setImporting(false);
     }
+  };
 
   const handleDeleteClick = (id: string, name: string) => {
     setTemplateToDelete({ id, name });
@@ -102,10 +104,6 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Food Templates</h3>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Template
-        </Button>
       </div>
 
       {templates.length === 0 ? (
@@ -127,9 +125,17 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onSelectTemplate(template)}
+                    onClick={() => handleImportClick(template)}
+                    disabled={importing}
                   >
-                    Use
+                    {importing && templateToImport?.id === template.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      'Use'
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -145,44 +151,40 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
         </div>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <Dialog open={importWarningOpen} onOpenChange={setImportWarningOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Food Template</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Warning: This will replace all existing items
+            </DialogTitle>
+            <DialogDescription>
+              Importing this template will replace all food items for {format(currentDate, 'PPP')}. 
+              This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="template-name">Template Name</Label>
-              <Input
-                id="template-name"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="e.g., My Breakfast, Post-Workout Meal"
-              />
-            </div>
-            <FoodLogEntryForm
-              items={[]}
-              onSave={(items) => setTemplateItems(items)}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateTemplate}
-                disabled={saving || !templateName.trim() || templateItems.length === 0}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Template'
-                )}
-              </Button>
-            </div>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setImportWarningOpen(false);
+              setTemplateToImport(null);
+            }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => templateToImport && handleImportTemplate(templateToImport)}
+              disabled={importing}
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                'Replace and Import'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       

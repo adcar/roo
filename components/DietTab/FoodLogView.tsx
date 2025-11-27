@@ -261,6 +261,7 @@ export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
       ...existingItems,
       ...items.map((item, idx) => ({
         id: `temp_${Date.now()}_${idx}`,
+        logEntryId: logData?.entry?.id || '',
         productId: item.productId,
         quantity: item.quantity,
         mealType: item.mealType || addFoodMealType,

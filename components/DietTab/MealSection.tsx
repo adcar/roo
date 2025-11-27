@@ -203,3 +203,4 @@ export function MealSection({ mealType, items, onAdd, onUpdateItem, onDeleteItem
     </Card>
   );
 }
+
