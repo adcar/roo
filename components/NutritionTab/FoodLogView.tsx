@@ -63,18 +63,19 @@ function MacroPieChart({ protein, carbs, fat }: { protein: number; carbs: number
           content={({ active, payload }) => {
             if (!active || !payload || !payload[0]) return null;
             const value = payload[0].value as number;
-            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
             const name = payload[0].name as string;
             const label = chartConfig[name as keyof typeof chartConfig]?.label || name;
             return (
-              <ChartTooltipContent>
+              <div className="border-border/50 bg-background rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
                 <div className="flex flex-col gap-1">
                   <div className="font-medium">{label}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {value.toFixed(1)}g ({percentage}%)
+                  <div className="text-sm">
+                    <span className="font-semibold">{value.toFixed(1)}g</span>
+                    <span className="text-muted-foreground ml-2">({percentage}%)</span>
                   </div>
                 </div>
-              </ChartTooltipContent>
+              </div>
             );
           }}
         />
@@ -433,46 +434,56 @@ export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
         )}
       </div>
 
-      {totals && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card className="p-4">
-            <h3 className="font-semibold mb-3">Daily Totals</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Calories</div>
-                <div className="text-lg font-semibold">{Math.round(totals.totalCalories)} kcal</div>
+      {totals && (() => {
+        const totalMacros = totals.totalProtein + totals.totalCarbs + totals.totalFat;
+        const proteinPercentage = totalMacros > 0 ? ((totals.totalProtein / totalMacros) * 100).toFixed(1) : '0.0';
+        const carbsPercentage = totalMacros > 0 ? ((totals.totalCarbs / totalMacros) * 100).toFixed(1) : '0.0';
+        const fatPercentage = totalMacros > 0 ? ((totals.totalFat / totalMacros) * 100).toFixed(1) : '0.0';
+        
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="p-4">
+              <h3 className="font-semibold mb-3">Daily Totals</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Calories</div>
+                  <div className="text-lg font-semibold">{Math.round(totals.totalCalories)} kcal</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Protein</div>
+                  <div className="text-lg font-semibold">{totals.totalProtein.toFixed(1)}g</div>
+                  <div className="text-xs text-muted-foreground">{proteinPercentage}%</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Carbs</div>
+                  <div className="text-lg font-semibold">{totals.totalCarbs.toFixed(1)}g</div>
+                  <div className="text-xs text-muted-foreground">{carbsPercentage}%</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Fat</div>
+                  <div className="text-lg font-semibold">{totals.totalFat.toFixed(1)}g</div>
+                  <div className="text-xs text-muted-foreground">{fatPercentage}%</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Protein</div>
-                <div className="text-lg font-semibold">{totals.totalProtein.toFixed(1)}g</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Carbs</div>
-                <div className="text-lg font-semibold">{totals.totalCarbs.toFixed(1)}g</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Fat</div>
-                <div className="text-lg font-semibold">{totals.totalFat.toFixed(1)}g</div>
-              </div>
-            </div>
-          </Card>
+            </Card>
           
-          <Card className="p-4">
-            <h3 className="font-semibold mb-3">Macro Distribution</h3>
-            {totals.totalProtein + totals.totalCarbs + totals.totalFat > 0 ? (
-              <MacroPieChart 
-                protein={totals.totalProtein}
-                carbs={totals.totalCarbs}
-                fat={totals.totalFat}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                No data to display
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
+            <Card className="p-4">
+              <h3 className="font-semibold mb-3">Macro Distribution</h3>
+              {totals.totalProtein + totals.totalCarbs + totals.totalFat > 0 ? (
+                <MacroPieChart 
+                  protein={totals.totalProtein}
+                  carbs={totals.totalCarbs}
+                  fat={totals.totalFat}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                  No data to display
+                </div>
+              )}
+            </Card>
+          </div>
+        );
+      })()}
 
       <div className="space-y-4">
         <MealSection
