@@ -179,6 +179,81 @@ export async function getDb() {
     } catch (e) {
       // Column already exists or table doesn't exist yet, ignore
     }
+
+    // Initialize nutrition tables
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        product_data TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS food_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        items TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS food_log_entries (
+        id TEXT PRIMARY KEY,
+        date TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS food_log_items (
+        id TEXT PRIMARY KEY,
+        log_entry_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        quantity TEXT NOT NULL,
+        meal_type TEXT,
+        created_at TEXT NOT NULL
+      );
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS user_foods (
+        user_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, product_id)
+      );
+    `);
+
+    // Migration: Populate user_foods from existing food log items for backward compatibility
+    // This is a one-time migration that runs if the table is empty
+    try {
+      const userFoodsCount = await client.execute(`SELECT COUNT(*) as count FROM user_foods`);
+      const count = (userFoodsCount.rows[0] as any)?.count || 0;
+      
+      if (count === 0) {
+        // Table is empty, migrate existing food log items
+        await client.execute(`
+          INSERT OR IGNORE INTO user_foods (user_id, product_id, created_at)
+          SELECT DISTINCT 
+            fle.user_id,
+            fli.product_id,
+            MIN(fli.created_at) as created_at
+          FROM food_log_items fli
+          INNER JOIN food_log_entries fle ON fli.log_entry_id = fle.id
+          GROUP BY fle.user_id, fli.product_id
+        `);
+      }
+    } catch (e) {
+      // Migration failed, but that's okay - it will populate naturally as users add foods
+      console.log('Migration note: user_foods will populate as users add foods to their logs');
+    }
   }
 
   return db;

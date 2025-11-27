@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { ClipboardList, Dumbbell, BarChart3, Trophy, Monitor, Moon, Sun, LogOut, ChevronDown, Settings } from 'lucide-react';
+import { ClipboardList, Dumbbell, BarChart3, Trophy, Monitor, Moon, Sun, LogOut, ChevronDown, Settings, Apple } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,21 +30,21 @@ export default function Navigation() {
 
   // Determine active tab based on pathname
   // Only highlight tabs on their specific routes, not on other pages like /settings
-  const activeTab = pathname === '/exercises' ? 'exercises' 
-    : pathname === '/analytics' ? 'analytics' 
+  const activeTab = pathname === '/analytics' ? 'analytics' 
     : pathname === '/leaderboard' ? 'leaderboard'
+    : pathname === '/nutrition' ? 'nutrition'
     : pathname === '/programs' || pathname.startsWith('/programs/') ? 'programs'
     : undefined;
 
   const handleTabChange = (value: string) => {
     if (value === 'programs') {
       router.push('/programs');
-    } else if (value === 'exercises') {
-      router.push('/exercises');
     } else if (value === 'analytics') {
       router.push('/analytics');
     } else if (value === 'leaderboard') {
       router.push('/leaderboard');
+    } else if (value === 'nutrition') {
+      router.push('/nutrition');
     }
   };
 
@@ -71,11 +71,12 @@ export default function Navigation() {
     return null;
   }
 
+  // Mobile bottom nav items (excluding exercises - moved to dropdown menu)
   const navItems = [
     { value: 'programs', route: '/programs', icon: ClipboardList, label: 'Programs' },
-    { value: 'exercises', route: '/exercises', icon: Dumbbell, label: 'Exercises' },
     { value: 'analytics', route: '/analytics', icon: BarChart3, label: 'Analytics' },
     { value: 'leaderboard', route: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+    { value: 'nutrition', route: '/nutrition', icon: Apple, label: 'Nutrition' },
   ];
 
   return (
@@ -125,6 +126,10 @@ export default function Navigation() {
                     </>
                   )}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/exercises')}>
+                    <Dumbbell className="mr-2 h-4 w-4" />
+                    <span>Exercise Library</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
@@ -146,10 +151,6 @@ export default function Navigation() {
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Programs
                 </TabsTrigger>
-                <TabsTrigger value="exercises" className="cursor-pointer">
-                  <Dumbbell className="mr-2 h-4 w-4" />
-                  Exercise Library
-                </TabsTrigger>
                 <TabsTrigger value="analytics" className="cursor-pointer">
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Analytics
@@ -157,6 +158,10 @@ export default function Navigation() {
                 <TabsTrigger value="leaderboard" className="cursor-pointer">
                   <Trophy className="mr-2 h-4 w-4" />
                   Leaderboard
+                </TabsTrigger>
+                <TabsTrigger value="nutrition" className="cursor-pointer">
+                  <Apple className="mr-2 h-4 w-4" />
+                  Nutrition
                 </TabsTrigger>
               </TabsList>
             </Tabs>

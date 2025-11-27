@@ -34,6 +34,11 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
   },
+  trustedOrigins: [
+    'http://localhost:6050',
+    'http://127.0.0.1:6050',
+    'http://192.168.50.110:6050', // Local network IP for phone access
+  ],
   plugins: [
     username(), // Enable username plugin for username/password login
   ],

@@ -52,7 +52,7 @@ export function LoadingHints() {
       <div className="text-muted-foreground text-lg animate-pulse">
         Loading...
       </div>
-      <div className="text-center max-w-md px-4">
+      <div className="text-center max-w-md px-6">
         <p
           key={currentHintIndex}
           className={`text-sm text-muted-foreground italic transition-opacity duration-300 ${
