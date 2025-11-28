@@ -11,6 +11,7 @@ interface LeaderboardEntry {
   workoutCount: number;
   currentStreak: number;
   longestStreak: number;
+  rank: number;
 }
 
 // Streak calculation helpers
@@ -282,10 +283,29 @@ export async function GET(request: Request) {
           workoutCount: count,
           currentStreak: streakData.currentStreak,
           longestStreak: streakData.longestStreak,
+          rank: 0, // Will be calculated after sorting
         };
       })
       .filter((entry): entry is LeaderboardEntry => entry !== null)
       .sort((a, b) => b.workoutCount - a.workoutCount); // Sort by workout count descending
+
+    // Calculate ranks with proper tie handling
+    // Entries with the same workout count get the same rank
+    // The next rank after a tie skips appropriately (e.g., if two tie for 2nd, next is 4th)
+    let currentRank = 1;
+    for (let i = 0; i < leaderboard.length; i++) {
+      if (i === 0) {
+        // First entry is always rank 1
+        leaderboard[i].rank = 1;
+      } else {
+        // If workout count is different from previous, assign new rank
+        if (leaderboard[i].workoutCount !== leaderboard[i - 1].workoutCount) {
+          currentRank = i + 1;
+        }
+        // Otherwise, same rank as previous (tied)
+        leaderboard[i].rank = currentRank;
+      }
+    }
 
     return NextResponse.json(leaderboard);
   } catch (error) {

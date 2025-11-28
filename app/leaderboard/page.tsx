@@ -13,6 +13,7 @@ interface LeaderboardEntry {
   workoutCount: number;
   currentStreak: number;
   longestStreak: number;
+  rank: number;
 }
 
 function getMedalIcon(position: number) {
@@ -133,7 +134,7 @@ export default function LeaderboardPage() {
             <CardContent>
               <div className="space-y-3">
                 {leaderboard.map((entry, index) => {
-                  const position = index + 1;
+                  const position = entry.rank;
                   const medalIcon = getMedalIcon(position);
                   const positionColor = getPositionColor(position);
                   
