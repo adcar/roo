@@ -17,6 +17,14 @@ import {
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
+// Mobile bottom nav items (excluding exercises - moved to dropdown menu)
+const navItems = [
+  { value: 'programs', route: '/programs', icon: ClipboardList, label: 'Programs' },
+  { value: 'analytics', route: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { value: 'leaderboard', route: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { value: 'nutrition', route: '/nutrition', icon: Apple, label: 'Nutrition' },
+];
+
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -26,7 +34,11 @@ export default function Navigation() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Prefetch all navigation routes for faster navigation
+    navItems.forEach((item) => {
+      router.prefetch(item.route);
+    });
+  }, [router]);
 
   // Determine active tab based on pathname
   // Only highlight tabs on their specific routes, not on other pages like /settings
@@ -55,11 +67,6 @@ export default function Navigation() {
     }
   };
 
-  const handleNavClick = (route: string) => {
-    triggerHapticFeedback();
-    router.push(route);
-  };
-
   async function handleLogout() {
     await authClient.signOut();
     router.push('/login');
@@ -70,14 +77,6 @@ export default function Navigation() {
   if (pathname === '/login') {
     return null;
   }
-
-  // Mobile bottom nav items (excluding exercises - moved to dropdown menu)
-  const navItems = [
-    { value: 'programs', route: '/programs', icon: ClipboardList, label: 'Programs' },
-    { value: 'analytics', route: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { value: 'leaderboard', route: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-    { value: 'nutrition', route: '/nutrition', icon: Apple, label: 'Nutrition' },
-  ];
 
   return (
     <>
@@ -176,9 +175,11 @@ export default function Navigation() {
             const Icon = item.icon;
             const isActive = activeTab === item.value;
             return (
-              <button
+              <Link
                 key={item.value}
-                onClick={() => handleNavClick(item.route)}
+                href={item.route}
+                prefetch={true}
+                onClick={() => triggerHapticFeedback()}
                 className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
                   isActive 
                     ? 'text-primary' 
@@ -187,7 +188,7 @@ export default function Navigation() {
               >
                 <Icon className="h-5 w-5 mb-1" />
                 <span className="text-xs font-medium">{item.label}</span>
-              </button>
+              </Link>
             );
           })}
         </div>
