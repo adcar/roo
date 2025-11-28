@@ -46,10 +46,12 @@ export default function ProgramsTab() {
   const [weekMapping, setWeekMapping] = useState<WeekMapping>('oddA');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter('oddA'));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [inProgressWorkouts, setInProgressWorkouts] = useState<Map<string, { week: string; updatedAt: string }>>(new Map());
 
   useEffect(() => {
     fetchPrograms();
     fetchWeekMapping();
+    fetchInProgressWorkouts();
     // Update week number and selected week when component mounts or date changes
     const updateWeek = () => {
       const weekNum = getCurrentWeekNumber();
@@ -59,6 +61,23 @@ export default function ProgramsTab() {
     };
     updateWeek();
   }, [weekMapping]);
+
+  const fetchInProgressWorkouts = async () => {
+    try {
+      const res = await fetch('/api/workout-progress/all');
+      if (res.ok) {
+        const data = await res.json();
+        const progressMap = new Map<string, { week: string; updatedAt: string }>();
+        data.progress.forEach((p: { programId: string; dayId: string; week: string; updatedAt: string }) => {
+          const key = `${p.programId}-${p.dayId}`;
+          progressMap.set(key, { week: p.week, updatedAt: p.updatedAt });
+        });
+        setInProgressWorkouts(progressMap);
+      }
+    } catch (error) {
+      console.error('Error fetching in-progress workouts:', error);
+    }
+  };
 
   const fetchWeekMapping = async () => {
     try {
@@ -126,10 +145,19 @@ export default function ProgramsTab() {
       try {
         await fetch(`/api/programs/${programId}`, { method: 'DELETE' });
         setPrograms(programs.filter(p => p.id !== programId));
+        // Refresh in-progress workouts after deletion
+        fetchInProgressWorkouts();
       } catch (error) {
         console.error('Error deleting program:', error);
       }
     }
+  };
+
+
+  const isDayInProgress = (programId: string, dayId: string, week: string): boolean => {
+    const key = `${programId}-${dayId}`;
+    const progress = inProgressWorkouts.get(key);
+    return progress !== undefined && progress.week === week;
   };
 
   if (loading) {
@@ -251,10 +279,17 @@ export default function ProgramsTab() {
                         </div>
                       </div>
                       <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${program.isSplit !== false ? selectedWeek : 'A'}`} onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" className="ml-2">
-                          <Play className="mr-2 h-4 w-4" />
-                          Start
-                        </Button>
+                        {isDayInProgress(program.id, day.id, program.isSplit !== false ? selectedWeek : 'A') ? (
+                          <Button size="sm" variant="secondary">
+                            <Play className="mr-2 h-4 w-4" />
+                            Resume
+                          </Button>
+                        ) : (
+                          <Button size="sm">
+                            <Play className="mr-2 h-4 w-4" />
+                            Start
+                          </Button>
+                        )}
                       </Link>
                     </div>
                   ))}

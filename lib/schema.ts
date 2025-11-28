@@ -20,6 +20,18 @@ export const workoutLogs = sqliteTable('workout_logs', {
   userId: text('user_id').notNull(), // User who owns this log
 });
 
+export const workoutProgress = sqliteTable('workout_progress', {
+  id: text('id').primaryKey(),
+  programId: text('program_id').notNull(),
+  dayId: text('day_id').notNull(),
+  week: text('week').notNull(), // 'A' or 'B'
+  currentExerciseIndex: integer('current_exercise_index').notNull(),
+  exercises: text('exercises').notNull(), // JSON string
+  userId: text('user_id').notNull(), // User who owns this progress
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 export const customExercises = sqliteTable('custom_exercises', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),

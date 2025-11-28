@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -34,6 +34,9 @@ function WorkoutContent() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const [showMobileImages, setShowMobileImages] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (programId) {
@@ -77,89 +80,129 @@ function WorkoutContent() {
       const effectiveWeek = isSplit ? selectedWeek : 'A';
       const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
       
-      // Fetch previous workout logs for this program/day/week
-      fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
+      // First, try to load existing progress
+      fetch(`/api/workout-progress?programId=${programId}&dayId=${dayId}&week=${effectiveWeek}`)
         .then(res => res.json())
-        .then((previousLogs: WorkoutLog[] | { error?: string }) => {
-          // Handle error responses
-          if (!Array.isArray(previousLogs)) {
-            console.error('Error fetching workout logs:', previousLogs);
+        .then((progressData: { progress: any } | { error?: string }) => {
+          if ('error' in progressData) {
+            console.error('Error fetching progress:', progressData);
             return;
           }
-          // Filter logs for the same week and sort by date (most recent first)
-          // For non-split programs, treat all logs as week A
-          const isSplit = program?.isSplit !== false;
-          const effectiveWeek = isSplit ? selectedWeek : 'A';
-          const weekLogs = previousLogs
-            .filter(log => {
-              if (!isSplit) return true; // For non-split, get all logs
-              return log.week === selectedWeek;
-            })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           
-          // Get the most recent log if it exists
-          const mostRecentLog = weekLogs.length > 0 ? weekLogs[0] : null;
+          // If we have saved progress, use it
+          if (progressData.progress) {
+            const progress = progressData.progress;
+            setCurrentExerciseIndex(progress.currentExerciseIndex || 0);
+            setExerciseLogs(progress.exercises || []);
+            if (progress.updatedAt) {
+              setLastSavedAt(new Date(progress.updatedAt));
+            }
+            // Continue to fetch workout logs for defaults even if we have progress
+          }
           
-          // Initialize logs with defaults (either from last workout or program defaults)
-          const logs: ExerciseLog[] = exercises.map(ex => {
-            // Try to find this exercise in the most recent log
-            const previousExerciseLog = mostRecentLog?.exercises.find(
-              (e: ExerciseLog) => e.exerciseId === ex.exerciseId
-            );
-            
-            // Initialize sets - use last workout's set count if available, otherwise program default
-            const setCount = previousExerciseLog?.sets.length || ex.sets || 0;
-            
-            // Program defaults
-            const defaultReps = ex.reps || 0;
-            const defaultWeight = ex.weight || 0;
-            
-            return {
-              exerciseId: ex.exerciseId,
-              sets: Array(setCount).fill(null).map((_, setIndex) => {
-                // Try to get values from the same set index in previous workout
-                if (previousExerciseLog && previousExerciseLog.sets[setIndex]) {
-                  const previousSet = previousExerciseLog.sets[setIndex];
-                  if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
+          // No progress found, fetch previous workout logs for defaults
+          fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
+            .then(res => res.json())
+            .then((previousLogs: WorkoutLog[] | { error?: string }) => {
+              // Handle error responses
+              if (!Array.isArray(previousLogs)) {
+                console.error('Error fetching workout logs:', previousLogs);
+                return;
+              }
+              // Filter logs for the same week and sort by date (most recent first)
+              // For non-split programs, treat all logs as week A
+              const isSplit = program?.isSplit !== false;
+              const effectiveWeek = isSplit ? selectedWeek : 'A';
+              const weekLogs = previousLogs
+                .filter(log => {
+                  if (!isSplit) return true; // For non-split, get all logs
+                  return log.week === selectedWeek;
+                })
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              
+              // Get the most recent log if it exists
+              const mostRecentLog = weekLogs.length > 0 ? weekLogs[0] : null;
+              
+              // Initialize logs with defaults (either from last workout or program defaults)
+              const logs: ExerciseLog[] = exercises.map(ex => {
+                // Try to find this exercise in the most recent log
+                const previousExerciseLog = mostRecentLog?.exercises.find(
+                  (e: ExerciseLog) => e.exerciseId === ex.exerciseId
+                );
+                
+                // Initialize sets - use last workout's set count if available, otherwise program default
+                const setCount = previousExerciseLog?.sets.length || ex.sets || 0;
+                
+                // Program defaults
+                const defaultReps = ex.reps || 0;
+                const defaultWeight = ex.weight || 0;
+                
+                return {
+                  exerciseId: ex.exerciseId,
+                  sets: Array(setCount).fill(null).map((_, setIndex) => {
+                    // Try to get values from the same set index in previous workout
+                    if (previousExerciseLog && previousExerciseLog.sets[setIndex]) {
+                      const previousSet = previousExerciseLog.sets[setIndex];
+                      if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
+                        return {
+                          reps: previousSet.reps,
+                          weight: previousSet.weight,
+                          completed: false,
+                        };
+                      }
+                    }
+                    
+                    // Fall back to program defaults or last set's values if this set doesn't exist
+                    if (previousExerciseLog && previousExerciseLog.sets.length > 0) {
+                      // If this set index doesn't exist, use the last completed set's values
+                      const completedSets = previousExerciseLog.sets.filter((s: SetLog) => s.completed);
+                      if (completedSets.length > 0) {
+                        const lastSet = completedSets[completedSets.length - 1];
+                        if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
+                          return {
+                            reps: lastSet.reps,
+                            weight: lastSet.weight,
+                            completed: false,
+                          };
+                        }
+                      }
+                    }
+                    
+                    // Final fallback to program defaults
                     return {
-                      reps: previousSet.reps,
-                      weight: previousSet.weight,
+                      reps: defaultReps,
+                      weight: defaultWeight,
                       completed: false,
                     };
-                  }
-                }
-                
-                // Fall back to program defaults or last set's values if this set doesn't exist
-                if (previousExerciseLog && previousExerciseLog.sets.length > 0) {
-                  // If this set index doesn't exist, use the last completed set's values
-                  const completedSets = previousExerciseLog.sets.filter((s: SetLog) => s.completed);
-                  if (completedSets.length > 0) {
-                    const lastSet = completedSets[completedSets.length - 1];
-                    if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
-                      return {
-                        reps: lastSet.reps,
-                        weight: lastSet.weight,
-                        completed: false,
-                      };
-                    }
-                  }
-                }
-                
-                // Final fallback to program defaults
-                return {
-                  reps: defaultReps,
-                  weight: defaultWeight,
-                  completed: false,
+                  }),
                 };
-              }),
-            };
-          });
-          
-          setExerciseLogs(logs);
+              });
+              
+              // Only set logs if we don't already have progress
+              if (!progressData.progress) {
+                setExerciseLogs(logs);
+              }
+            })
+            .catch(err => {
+              console.error('Error fetching previous logs:', err);
+              // Fallback to program defaults if fetch fails
+              if (!progressData.progress) {
+                const logs: ExerciseLog[] = exercises.map(ex => ({
+                  exerciseId: ex.exerciseId,
+                  sets: Array(ex.sets || 0).fill(null).map(() => ({
+                    reps: ex.reps || 0,
+                    weight: ex.weight || 0,
+                    completed: false,
+                  })),
+                }));
+                setExerciseLogs(logs);
+              }
+            });
         })
         .catch(err => {
-          console.error('Error fetching previous logs:', err);
-          // Fallback to program defaults if fetch fails
+          console.error('Error fetching progress:', err);
+          // If progress fetch fails, still initialize logs
+          const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
           const logs: ExerciseLog[] = exercises.map(ex => ({
             exerciseId: ex.exerciseId,
             sets: Array(ex.sets || 0).fill(null).map(() => ({
@@ -171,7 +214,7 @@ function WorkoutContent() {
           setExerciseLogs(logs);
         });
     }
-  }, [selectedDay, selectedWeek, programId, dayId]);
+  }, [selectedDay, selectedWeek, programId, dayId, program]);
 
   const currentExercises = selectedDay
     ? (() => {
@@ -187,6 +230,50 @@ function WorkoutContent() {
     : null;
   const currentLog = exerciseLogs[currentExerciseIndex];
 
+  const saveProgress = useCallback(async () => {
+    if (!program || !selectedDay || !programId || !dayId || exerciseLogs.length === 0) return;
+    
+    const isSplit = program.isSplit !== false;
+    const effectiveWeek = isSplit ? selectedWeek : 'A';
+    
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/workout-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          dayId,
+          week: effectiveWeek,
+          currentExerciseIndex,
+          exercises: exerciseLogs,
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.updatedAt) {
+          setLastSavedAt(new Date(data.updatedAt));
+        }
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [program, selectedDay, programId, dayId, selectedWeek, currentExerciseIndex, exerciseLogs]);
+
+  // Create initial progress entry when logs are ready and no progress exists
+  useEffect(() => {
+    if (exerciseLogs.length > 0 && program && selectedDay && programId && dayId && !lastSavedAt) {
+      // Small delay to ensure everything is initialized
+      const timer = setTimeout(() => {
+        saveProgress();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [exerciseLogs.length, program, selectedDay, programId, dayId, lastSavedAt, saveProgress]);
+
   const updateSetLog = (setIndex: number, updates: Partial<SetLog>) => {
     const newLogs = [...exerciseLogs];
     newLogs[currentExerciseIndex].sets[setIndex] = {
@@ -194,7 +281,25 @@ function WorkoutContent() {
       ...updates,
     };
     setExerciseLogs(newLogs);
+    
+    // Auto-save with debouncing
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    const timeout = setTimeout(() => {
+      saveProgress();
+    }, 1000); // Save 1 second after last change
+    setSaveTimeout(timeout);
   };
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
+  }, [saveTimeout]);
 
 
   // Map exercise muscle names to react-body-highlighter format
@@ -354,15 +459,19 @@ function WorkoutContent() {
     });
   };
 
-  const nextExercise = () => {
+  const nextExercise = async () => {
     if (currentExerciseIndex < currentExercises.length - 1) {
+      // Save progress before moving to next exercise
+      await saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex + 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
     }
   };
 
-  const previousExercise = () => {
+  const previousExercise = async () => {
     if (currentExerciseIndex > 0) {
+      // Save progress before moving to previous exercise
+      await saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex - 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
     }
@@ -375,10 +484,11 @@ function WorkoutContent() {
 
     // For non-split programs, always save as week A
     const isSplit = program.isSplit !== false;
+    const effectiveWeek = isSplit ? selectedWeek : 'A';
     const workoutLog = {
       programId: program.id,
       dayId: selectedDay.id,
-      week: isSplit ? selectedWeek : 'A',
+      week: effectiveWeek,
       date: new Date().toISOString(),
       exercises: exerciseLogs,
     };
@@ -389,6 +499,16 @@ function WorkoutContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(workoutLog),
       });
+      
+      // Delete progress after successfully saving workout log
+      try {
+        await fetch(`/api/workout-progress?programId=${program.id}&dayId=${selectedDay.id}&week=${effectiveWeek}`, {
+          method: 'DELETE',
+        });
+      } catch (error) {
+        console.error('Error deleting progress:', error);
+        // Don't fail the workout completion if progress deletion fails
+      }
       
       // Show confetti
       const confetti = (await import('canvas-confetti')).default;
@@ -452,12 +572,29 @@ function WorkoutContent() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Link href="/programs">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Programs
-            </Button>
-          </Link>
+          <div className="flex justify-between items-start mb-4">
+            <Link href="/programs">
+              <Button variant="ghost">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Programs
+              </Button>
+            </Link>
+            {lastSavedAt && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span>Saved {lastSavedAt.toLocaleTimeString()}</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <h1 className="text-3xl font-bold">{program.name}</h1>
           <p className="text-muted-foreground">
             {selectedDay.name}
