@@ -6,6 +6,10 @@ import { getUserId } from '@/lib/auth-server';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { getExerciseImagePath, getCustomExerciseImageDir } from '@/lib/file-utils';
+
+// Mark this route as dynamic to avoid Turbopack static analysis warnings
+export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: Request,
@@ -54,14 +58,14 @@ export async function PUT(
         const bytes = await imageFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
         
-        const imageDir = join(process.cwd(), 'public', 'exercise-images', 'custom');
+        const imageDir = getCustomExerciseImageDir();
         if (!existsSync(imageDir)) {
           await mkdir(imageDir, { recursive: true });
         }
         
         // Delete old image if it exists
         if (existingImages[i]) {
-          const oldImagePath = join(process.cwd(), 'public', 'exercise-images', existingImages[i]);
+          const oldImagePath = getExerciseImagePath(existingImages[i]);
           if (existsSync(oldImagePath)) {
             try {
               await unlink(oldImagePath);
@@ -72,7 +76,7 @@ export async function PUT(
         }
         
         const imageName = `${id}_${i}.jpg`;
-        const imagePath = join(imageDir, imageName);
+        const imagePath = `${imageDir}/${imageName}`;
         await writeFile(imagePath, buffer);
         imagePaths.push(`custom/${imageName}`);
       } else if (existingImages[i]) {
@@ -142,7 +146,7 @@ export async function DELETE(
     // Delete associated images
     const images = JSON.parse(existingExercise.images || '[]');
     for (const imagePath of images) {
-      const fullPath = join(process.cwd(), 'public', 'exercise-images', imagePath);
+      const fullPath = getExerciseImagePath(imagePath);
       if (existsSync(fullPath)) {
         try {
           await unlink(fullPath);

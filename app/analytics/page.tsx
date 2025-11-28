@@ -1,6 +1,8 @@
 import { AnalyticsContent } from '@/components/AnalyticsContent';
 import { getWorkoutLogs, getPrograms } from '@/lib/server-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsPage() {
   const [workoutLogs, programs] = await Promise.all([
     getWorkoutLogs(),

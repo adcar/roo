@@ -1,6 +1,8 @@
 import { ProgramsContent } from '@/components/ProgramsContent';
 import { getPrograms, getWeekMapping, getInProgressWorkouts } from '@/lib/server-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProgramsPage() {
   const [programs, weekMapping, inProgressWorkouts] = await Promise.all([
     getPrograms(),
