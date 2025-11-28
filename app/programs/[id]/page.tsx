@@ -13,17 +13,19 @@ import { Badge } from '@/components/ui/badge';
 import { BodyHighlighter, IExerciseData, Muscle } from '@/components/BodyHighlighter';
 import { mapMuscleName } from '@/components/ExercisesTab/utils';
 import { Edit } from 'lucide-react';
+import { useLoading } from '@/components/LoadingProvider';
 
 export default function ProgramViewPage() {
   const params = useParams();
   const { exercises } = useExercises();
+  const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedDayId, setSelectedDayId] = useState<string>('all');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | 'both'>('both');
 
   useEffect(() => {
     if (params.id) {
+      startLoading();
       fetch(`/api/programs/${params.id}`)
         .then(res => {
           if (!res.ok) {
@@ -33,14 +35,14 @@ export default function ProgramViewPage() {
         })
         .then(data => {
           setProgram(data);
-          setLoading(false);
+          stopLoading();
         })
         .catch(error => {
           console.error('Error loading program:', error);
-          setLoading(false);
+          stopLoading();
         });
     }
-  }, [params.id]);
+  }, [params.id, startLoading, stopLoading]);
 
   const getExercise = (exerciseId: string) => {
     return exercises.find(ex => ex.id === exerciseId);
@@ -212,14 +214,6 @@ export default function ProgramViewPage() {
       );
     });
   }, [program, selectedDayId, selectedWeek, exercises]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Loading...</div>
-      </div>
-    );
-  }
 
   if (!program) {
     return (

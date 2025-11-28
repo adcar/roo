@@ -17,6 +17,7 @@ import { AddFoodDialog } from './AddFoodDialog';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell } from 'recharts';
 import { getAvailableUnits, calculateNutritionForQuantity } from './utils';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface FoodLogViewProps {
   date: Date;
@@ -106,8 +107,8 @@ function MacroPieChart({ protein, carbs, fat }: { protein: number; carbs: number
 }
 
 export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
+  const { startLoading, stopLoading } = useLoading();
   const [logData, setLogData] = useState<FoodLogData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [addFoodOpen, setAddFoodOpen] = useState(false);
   const [addFoodMealType, setAddFoodMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -130,7 +131,7 @@ export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
 
   const loadLogData = useCallback(async (showLoading = true) => {
     if (showLoading) {
-      setLoading(true);
+      startLoading();
     }
     try {
       const response = await fetch(`/api/food-logs?date=${dateString}`);
@@ -141,10 +142,10 @@ export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
       console.error('Error loading food log:', error);
     } finally {
       if (showLoading) {
-        setLoading(false);
+        stopLoading();
       }
     }
-  }, [dateString]);
+  }, [dateString, startLoading, stopLoading]);
 
   useEffect(() => {
     loadLogData();
@@ -392,9 +393,6 @@ export function FoodLogView({ date, onDateChange }: FoodLogViewProps) {
 
   const totals = calculateTotals;
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="space-y-6">

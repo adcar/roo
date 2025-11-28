@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Award, Users, Flame } from 'lucide-react';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface LeaderboardEntry {
   userId: string;
@@ -43,14 +44,14 @@ function getPositionColor(position: number) {
 }
 
 export default function LeaderboardPage() {
+  const { startLoading, stopLoading } = useLoading();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
-        setLoading(true);
+        startLoading();
         const response = await fetch('/api/leaderboard');
         
         if (!response.ok) {
@@ -64,24 +65,14 @@ export default function LeaderboardPage() {
         console.error('Error fetching leaderboard:', err);
         setError('Failed to load leaderboard. Please try again later.');
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     }
 
     fetchLeaderboard();
-  }, []);
+  }, [startLoading, stopLoading]);
 
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-8">Loading...</div>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (

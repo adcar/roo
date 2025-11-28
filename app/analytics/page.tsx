@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WorkoutCalendar } from '@/components/WorkoutCalendar';
 import { DayDetails } from '@/components/DayDetails';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface SetData {
   reps: number;
@@ -50,17 +51,18 @@ function formatWeekLabel(date: Date): string {
 
 export default function AnalyticsPage() {
   const { exercises } = useExercises();
+  const { startLoading, stopLoading } = useLoading();
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>('all');
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'overview' | 'exercise' | 'calendar' | 'history' | 'weekProgress'>('overview');
-  const [loading, setLoading] = useState(true);
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const fetchData = () => {
+    startLoading();
     Promise.all([
       fetch('/api/workout-logs').then(res => res.json()),
       fetch('/api/programs').then(res => res.json()),
@@ -69,13 +71,13 @@ export default function AnalyticsPage() {
         // Ensure both are arrays, handle error responses
         setWorkoutLogs(Array.isArray(logsData) ? logsData : []);
         setPrograms(Array.isArray(programsData) ? programsData : []);
-        setLoading(false);
+        stopLoading();
       })
       .catch(err => {
         console.error('Error fetching data:', err);
         setWorkoutLogs([]);
         setPrograms([]);
-        setLoading(false);
+        stopLoading();
       });
   };
 
@@ -302,15 +304,6 @@ export default function AnalyticsPage() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-8">Loading...</div>
-        </div>
-      </div>
-    );
-  }
 
   if (exerciseStats.length === 0) {
     return (

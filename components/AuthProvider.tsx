@@ -3,12 +3,21 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
-import { LoadingHints } from '@/components/LoadingHints';
+import { useLoading } from '@/components/LoadingProvider';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
+  const { startLoading, stopLoading } = useLoading();
+
+  useEffect(() => {
+    if (isPending || (!session && pathname !== '/login')) {
+      startLoading();
+    } else {
+      stopLoading();
+    }
+  }, [isPending, session, pathname, startLoading, stopLoading]);
 
   useEffect(() => {
     // Don't redirect if already on login page or if session is still loading
@@ -25,11 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Show nothing while checking auth or redirecting
   if (isPending || (!session && pathname !== '/login')) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingHints />
-      </div>
-    );
+    return null;
   }
 
   return <>{children}</>;

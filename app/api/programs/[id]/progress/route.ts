@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // GET: Check if there's any in-progress workout for a program
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -21,7 +21,8 @@ export async function GET(
 
   try {
     const db = await getDb();
-    const programId = params.id;
+    const { id } = await params;
+    const programId = id;
 
     const progress = await db
       .select()

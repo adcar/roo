@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Search, Trash2, Loader2 } from 'lucide-react';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface MyFoodItem {
   productId: string;
@@ -16,8 +17,8 @@ interface MyFoodItem {
 }
 
 export function MyFoodTab() {
+  const { startLoading, stopLoading } = useLoading();
   const [foods, setFoods] = useState<MyFoodItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -29,7 +30,7 @@ export function MyFoodTab() {
   }, []);
 
   const loadMyFoods = async () => {
-    setLoading(true);
+    startLoading();
     try {
       const response = await fetch('/api/my-foods');
       const data = await response.json();
@@ -37,7 +38,7 @@ export function MyFoodTab() {
     } catch (error) {
       console.error('Error loading my foods:', error);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -70,9 +71,6 @@ export function MyFoodTab() {
     food.productId.includes(searchQuery)
   );
 
-  if (loading) {
-    return <div className="text-center py-8">Loading your foods...</div>;
-  }
 
   return (
     <div className="space-y-4">

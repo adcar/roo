@@ -80,18 +80,125 @@ function WorkoutContent() {
       const effectiveWeek = isSplit ? selectedWeek : 'A';
       const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
       
+      // Helper function to fetch workout logs
+      const fetchWorkoutLogs = (progressDataRef: { progress?: any }) => {
+        // No progress found, fetch previous workout logs for defaults
+        fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
+          .then(res => res.json())
+          .then((previousLogs: WorkoutLog[] | { error?: string }) => {
+            // Handle error responses
+            if (!Array.isArray(previousLogs)) {
+              console.error('Error fetching workout logs:', previousLogs);
+              return;
+            }
+            // Filter logs for the same week and sort by date (most recent first)
+            // For non-split programs, treat all logs as week A
+            const isSplit = program?.isSplit !== false;
+            const effectiveWeek = isSplit ? selectedWeek : 'A';
+            const weekLogs = previousLogs
+              .filter(log => {
+                if (!isSplit) return true; // For non-split, get all logs
+                return log.week === selectedWeek;
+              })
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+            // Get the most recent log if it exists
+            const mostRecentLog = weekLogs.length > 0 ? weekLogs[0] : null;
+            
+            // Initialize logs with defaults (either from last workout or program defaults)
+            const logs: ExerciseLog[] = exercises.map(ex => {
+              // Try to find this exercise in the most recent log
+              const previousExerciseLog = mostRecentLog?.exercises.find(
+                (e: ExerciseLog) => e.exerciseId === ex.exerciseId
+              );
+              
+              // Initialize sets - use last workout's set count if available, otherwise program default
+              const setCount = previousExerciseLog?.sets.length || ex.sets || 0;
+              
+              // Program defaults
+              const defaultReps = ex.reps || 0;
+              const defaultWeight = ex.weight || 0;
+              
+              return {
+                exerciseId: ex.exerciseId,
+                sets: Array(setCount).fill(null).map((_, setIndex) => {
+                  // Try to get values from the same set index in previous workout
+                  if (previousExerciseLog && previousExerciseLog.sets[setIndex]) {
+                    const previousSet = previousExerciseLog.sets[setIndex];
+                    if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
+                      return {
+                        reps: previousSet.reps,
+                        weight: previousSet.weight,
+                        completed: false,
+                      };
+                    }
+                  }
+                  
+                  // Fall back to program defaults or last set's values if this set doesn't exist
+                  if (previousExerciseLog && previousExerciseLog.sets.length > 0) {
+                    // If this set index doesn't exist, use the last completed set's values
+                    const completedSets = previousExerciseLog.sets.filter((s: SetLog) => s.completed);
+                    if (completedSets.length > 0) {
+                      const lastSet = completedSets[completedSets.length - 1];
+                      if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
+                        return {
+                          reps: lastSet.reps,
+                          weight: lastSet.weight,
+                          completed: false,
+                        };
+                      }
+                    }
+                  }
+                  
+                  // Final fallback to program defaults
+                  return {
+                    reps: defaultReps,
+                    weight: defaultWeight,
+                    completed: false,
+                  };
+                }),
+              };
+            });
+            
+            // Only set logs if we don't already have progress
+            if (!progressDataRef.progress) {
+              setExerciseLogs(logs);
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching previous logs:', err);
+            // Fallback to program defaults if fetch fails
+            if (!progressDataRef.progress) {
+              const logs: ExerciseLog[] = exercises.map(ex => ({
+                exerciseId: ex.exerciseId,
+                sets: Array(ex.sets || 0).fill(null).map(() => ({
+                  reps: ex.reps || 0,
+                  weight: ex.weight || 0,
+                  completed: false,
+                })),
+              }));
+              setExerciseLogs(logs);
+            }
+          });
+      };
+      
       // First, try to load existing progress
       fetch(`/api/workout-progress?programId=${programId}&dayId=${dayId}&week=${effectiveWeek}`)
         .then(res => res.json())
-        .then((progressData: { progress: any } | { error?: string }) => {
+        .then((progressData: { progress?: any } | { error?: string }) => {
           if ('error' in progressData) {
             console.error('Error fetching progress:', progressData);
+            // Continue to fetch workout logs even if progress fetch fails
+            fetchWorkoutLogs({});
             return;
           }
           
+          // TypeScript now knows progressData is { progress?: any }
+          const progressDataTyped = progressData as { progress?: any };
+          
           // If we have saved progress, use it
-          if (progressData.progress) {
-            const progress = progressData.progress;
+          if (progressDataTyped.progress) {
+            const progress = progressDataTyped.progress;
             setCurrentExerciseIndex(progress.currentExerciseIndex || 0);
             setExerciseLogs(progress.exercises || []);
             if (progress.updatedAt) {
@@ -100,104 +207,7 @@ function WorkoutContent() {
             // Continue to fetch workout logs for defaults even if we have progress
           }
           
-          // No progress found, fetch previous workout logs for defaults
-          fetch(`/api/workout-logs?programId=${programId}&dayId=${dayId}`)
-            .then(res => res.json())
-            .then((previousLogs: WorkoutLog[] | { error?: string }) => {
-              // Handle error responses
-              if (!Array.isArray(previousLogs)) {
-                console.error('Error fetching workout logs:', previousLogs);
-                return;
-              }
-              // Filter logs for the same week and sort by date (most recent first)
-              // For non-split programs, treat all logs as week A
-              const isSplit = program?.isSplit !== false;
-              const effectiveWeek = isSplit ? selectedWeek : 'A';
-              const weekLogs = previousLogs
-                .filter(log => {
-                  if (!isSplit) return true; // For non-split, get all logs
-                  return log.week === selectedWeek;
-                })
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-              
-              // Get the most recent log if it exists
-              const mostRecentLog = weekLogs.length > 0 ? weekLogs[0] : null;
-              
-              // Initialize logs with defaults (either from last workout or program defaults)
-              const logs: ExerciseLog[] = exercises.map(ex => {
-                // Try to find this exercise in the most recent log
-                const previousExerciseLog = mostRecentLog?.exercises.find(
-                  (e: ExerciseLog) => e.exerciseId === ex.exerciseId
-                );
-                
-                // Initialize sets - use last workout's set count if available, otherwise program default
-                const setCount = previousExerciseLog?.sets.length || ex.sets || 0;
-                
-                // Program defaults
-                const defaultReps = ex.reps || 0;
-                const defaultWeight = ex.weight || 0;
-                
-                return {
-                  exerciseId: ex.exerciseId,
-                  sets: Array(setCount).fill(null).map((_, setIndex) => {
-                    // Try to get values from the same set index in previous workout
-                    if (previousExerciseLog && previousExerciseLog.sets[setIndex]) {
-                      const previousSet = previousExerciseLog.sets[setIndex];
-                      if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
-                        return {
-                          reps: previousSet.reps,
-                          weight: previousSet.weight,
-                          completed: false,
-                        };
-                      }
-                    }
-                    
-                    // Fall back to program defaults or last set's values if this set doesn't exist
-                    if (previousExerciseLog && previousExerciseLog.sets.length > 0) {
-                      // If this set index doesn't exist, use the last completed set's values
-                      const completedSets = previousExerciseLog.sets.filter((s: SetLog) => s.completed);
-                      if (completedSets.length > 0) {
-                        const lastSet = completedSets[completedSets.length - 1];
-                        if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
-                          return {
-                            reps: lastSet.reps,
-                            weight: lastSet.weight,
-                            completed: false,
-                          };
-                        }
-                      }
-                    }
-                    
-                    // Final fallback to program defaults
-                    return {
-                      reps: defaultReps,
-                      weight: defaultWeight,
-                      completed: false,
-                    };
-                  }),
-                };
-              });
-              
-              // Only set logs if we don't already have progress
-              if (!progressData.progress) {
-                setExerciseLogs(logs);
-              }
-            })
-            .catch(err => {
-              console.error('Error fetching previous logs:', err);
-              // Fallback to program defaults if fetch fails
-              if (!progressData.progress) {
-                const logs: ExerciseLog[] = exercises.map(ex => ({
-                  exerciseId: ex.exerciseId,
-                  sets: Array(ex.sets || 0).fill(null).map(() => ({
-                    reps: ex.reps || 0,
-                    weight: ex.weight || 0,
-                    completed: false,
-                  })),
-                }));
-                setExerciseLogs(logs);
-              }
-            });
+          fetchWorkoutLogs(progressDataTyped);
         })
         .catch(err => {
           console.error('Error fetching progress:', err);

@@ -4,27 +4,29 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Program } from '@/types/exercise';
 import ProgramForm from '@/components/ProgramForm';
+import { useLoading } from '@/components/LoadingProvider';
 
 export default function EditProgramPage() {
   const params = useParams();
   const router = useRouter();
+  const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (params.id) {
+      startLoading();
       fetch(`/api/programs/${params.id}`)
         .then(res => res.json())
         .then(data => {
           setProgram(data);
-          setLoading(false);
+          stopLoading();
         })
         .catch(error => {
           console.error('Error loading program:', error);
-          setLoading(false);
+          stopLoading();
         });
     }
-  }, [params.id]);
+  }, [params.id, startLoading, stopLoading]);
 
   const handleSave = async (programData: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>) => {
     const updatedProgram: Program = {
@@ -40,14 +42,6 @@ export default function EditProgramPage() {
       body: JSON.stringify(updatedProgram),
     });
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Loading...</div>
-      </div>
-    );
-  }
 
   if (!program) {
     return (

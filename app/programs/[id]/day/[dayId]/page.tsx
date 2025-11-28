@@ -9,16 +9,18 @@ import { useExercises } from '@/hooks/useExercises';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Play } from 'lucide-react';
+import { useLoading } from '@/components/LoadingProvider';
 
 export default function DayViewPage() {
   const params = useParams();
   const { exercises } = useExercises();
+  const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
   const [day, setDay] = useState<WorkoutDay | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (params.id && params.dayId) {
+      startLoading();
       fetch(`/api/programs/${params.id}`)
         .then(res => {
           if (!res.ok) {
@@ -32,26 +34,18 @@ export default function DayViewPage() {
           if (foundDay) {
             setDay(foundDay);
           }
-          setLoading(false);
+          stopLoading();
         })
         .catch(error => {
           console.error('Error loading program:', error);
-          setLoading(false);
+          stopLoading();
         });
     }
-  }, [params.id, params.dayId]);
+  }, [params.id, params.dayId, startLoading, stopLoading]);
 
   const getExercise = (exerciseId: string) => {
     return exercises.find(ex => ex.id === exerciseId);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Loading...</div>
-      </div>
-    );
-  }
 
   if (!program || !day) {
     return (

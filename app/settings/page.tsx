@@ -11,13 +11,14 @@ import { toast } from '@/components/ui/toast';
 import { Settings, Flame } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authClient } from '@/lib/auth-client';
+import { useLoading } from '@/components/LoadingProvider';
 
 export default function SettingsPage() {
+  const { startLoading, stopLoading } = useLoading();
   const [weekMapping, setWeekMapping] = useState<string>('oddA');
   const [inspirationQuote, setInspirationQuote] = useState<string>('');
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [longestStreak, setLongestStreak] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const { data: session } = authClient.useSession();
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   useEffect(() => {
     async function fetchSettings() {
       try {
+        startLoading();
         const userId = session?.user?.id;
         
         const [settingsResponse, streaksResponse] = await Promise.all([
@@ -51,7 +53,7 @@ export default function SettingsPage() {
           variant: 'destructive',
         });
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     }
 
@@ -93,13 +95,6 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Loading settings...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">

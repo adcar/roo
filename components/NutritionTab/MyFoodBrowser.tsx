@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, Trash2, Loader2 } from 'lucide-react';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface MyFoodItem {
   productId: string;
@@ -21,8 +22,8 @@ interface MyFoodBrowserProps {
 }
 
 export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBrowserProps) {
+  const { startLoading, stopLoading } = useLoading();
   const [foods, setFoods] = useState<MyFoodItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -33,7 +34,7 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
   }, []);
 
   const loadMyFoods = async () => {
-    setLoading(true);
+    startLoading();
     try {
       const response = await fetch('/api/my-foods');
       const data = await response.json();
@@ -41,7 +42,7 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
     } catch (error) {
       console.error('Error loading my foods:', error);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -77,9 +78,6 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
 
   const isSelected = (productId: string) => selectedProducts.some(p => p.productId === productId);
 
-  if (loading) {
-    return <div className="text-center py-8">Loading your foods...</div>;
-  }
 
   return (
     <div className="space-y-4">

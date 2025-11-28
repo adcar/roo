@@ -8,6 +8,7 @@ import { AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { FoodTemplate } from './types';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { useLoading } from '@/components/LoadingProvider';
 
 interface FoodTemplateManagerProps {
   onSelectTemplate: (template: FoodTemplate) => void;
@@ -16,8 +17,8 @@ interface FoodTemplateManagerProps {
 }
 
 export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExistingItems }: FoodTemplateManagerProps) {
+  const { startLoading, stopLoading } = useLoading();
   const [templates, setTemplates] = useState<FoodTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<{ id: string; name: string } | null>(null);
   const [importWarningOpen, setImportWarningOpen] = useState(false);
@@ -30,13 +31,14 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
 
   const loadTemplates = async () => {
     try {
+      startLoading();
       const response = await fetch('/api/food-templates');
       const data = await response.json();
       setTemplates(data);
     } catch (error) {
       console.error('Error loading templates:', error);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -96,9 +98,6 @@ export function FoodTemplateManager({ onSelectTemplate, currentDate, hasExisting
     }
   };
 
-  if (loading) {
-    return <div>Loading templates...</div>;
-  }
 
   return (
     <div className="space-y-4">

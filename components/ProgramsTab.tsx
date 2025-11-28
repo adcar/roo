@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2, Play, Settings, Eye } from 'lucide-react';
+import { useLoading } from '@/components/LoadingProvider';
 
 type WeekMapping = 'oddA' | 'oddB';
 
@@ -40,8 +41,8 @@ function getCurrentWeekNumber(): number {
 
 export default function ProgramsTab() {
   const router = useRouter();
+  const { startLoading, stopLoading } = useLoading();
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentWeekNumber, setCurrentWeekNumber] = useState<number>(getCurrentWeekNumber());
   const [weekMapping, setWeekMapping] = useState<WeekMapping>('oddA');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter('oddA'));
@@ -120,6 +121,7 @@ export default function ProgramsTab() {
 
   const fetchPrograms = async () => {
     try {
+      startLoading();
       const res = await fetch('/api/programs');
       const data = await res.json();
       // Ensure data is an array, handle error responses
@@ -136,7 +138,7 @@ export default function ProgramsTab() {
       console.error('Error fetching programs:', error);
       setPrograms([]); // Set empty array on error
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -160,9 +162,6 @@ export default function ProgramsTab() {
     return progress !== undefined && progress.week === week;
   };
 
-  if (loading) {
-    return <div className="text-center py-8">Loading programs...</div>;
-  }
 
   return (
     <div>
