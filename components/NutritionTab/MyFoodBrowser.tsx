@@ -17,11 +17,10 @@ interface MyFoodItem {
 
 interface MyFoodBrowserProps {
   onSelect: (productId: string) => void;
-  selectedProducts: Array<{ productId: string; quantity: string; unit: string; productName?: string }>;
-  onRemove: (productId: string) => void;
+  selectedProductId?: string;
 }
 
-export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBrowserProps) {
+export function MyFoodBrowser({ onSelect, selectedProductId }: MyFoodBrowserProps) {
   const { startLoading, stopLoading } = useLoading();
   const [foods, setFoods] = useState<MyFoodItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,9 +75,6 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
     food.productId.includes(searchQuery)
   );
 
-  const isSelected = (productId: string) => selectedProducts.some(p => p.productId === productId);
-
-
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -98,7 +94,7 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
       ) : (
         <div className="grid gap-2 max-h-96 overflow-y-auto">
           {filteredFoods.map((food) => {
-            const selected = isSelected(food.productId);
+            const selected = selectedProductId === food.productId;
             
             return (
               <Card
@@ -106,13 +102,7 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
                 className={`p-3 cursor-pointer transition-colors focus:outline-none focus-visible:outline-none ${
                   selected ? 'bg-primary/10 border-primary' : 'hover:bg-accent border-border'
                 }`}
-                onClick={() => {
-                  if (selected) {
-                    onRemove(food.productId);
-                  } else {
-                    onSelect(food.productId);
-                  }
-                }}
+                onClick={() => onSelect(food.productId)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -122,9 +112,6 @@ export function MyFoodBrowser({ onSelect, selectedProducts, onRemove }: MyFoodBr
                     )}
                   </div>
                   <div className="flex items-center gap-2 ml-2">
-                    {selected && (
-                      <span className="text-xs text-primary font-medium">Selected</span>
-                    )}
                     <Button
                       variant="ghost"
                       size="icon"
