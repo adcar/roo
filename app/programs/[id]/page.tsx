@@ -406,7 +406,7 @@ export default function ProgramViewPage() {
                                     <h4 className="font-semibold mb-1">{exercise.name}</h4>
                                     <div className="flex gap-3 text-sm text-muted-foreground">
                                       {exercise.category === 'cardio' ? (
-                                        programExercise.distance && <span>{programExercise.distance} miles</span>
+                                        programExercise.distance !== undefined && <span>{Number(programExercise.distance).toFixed(2).replace(/\.?0+$/, '')} miles</span>
                                       ) : (
                                         <>
                                           {programExercise.sets && <span>{programExercise.sets} sets</span>}

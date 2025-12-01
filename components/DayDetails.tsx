@@ -111,7 +111,7 @@ export function DayDetails({ date, workouts, programs, exercises }: DayDetailsPr
                                   <div className="flex-1">
                                     <div className="text-xs text-muted-foreground">Distance</div>
                                     <div className="font-semibold">
-                                      {set.distance !== undefined ? `${set.distance} miles` : 'N/A'}
+                                      {set.distance !== undefined ? `${Number(set.distance).toFixed(2).replace(/\.?0+$/, '')} miles` : 'N/A'}
                                     </div>
                                   </div>
                                 </div>
