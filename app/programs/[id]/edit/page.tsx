@@ -11,14 +11,26 @@ export default function EditProgramPage() {
   const router = useRouter();
   const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (params.id) {
       startLoading();
       fetch(`/api/programs/${params.id}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            if (res.status === 404) {
+              setNotFound(true);
+            }
+            stopLoading();
+            return;
+          }
+          return res.json();
+        })
         .then(data => {
-          setProgram(data);
+          if (data) {
+            setProgram(data);
+          }
           stopLoading();
         })
         .catch(error => {
@@ -43,12 +55,16 @@ export default function EditProgramPage() {
     });
   };
 
-  if (!program) {
+  if (notFound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-2xl">Program not found</div>
       </div>
     );
+  }
+
+  if (!program) {
+    return null;
   }
 
   return (

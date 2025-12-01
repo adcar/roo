@@ -82,15 +82,15 @@ export default function Navigation() {
     <>
       {/* Top Navigation - Header with tabs on desktop */}
       <div className="border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="container mx-auto px-4 py-3 md:py-6">
+          <div className="flex items-center justify-between md:mb-4">
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
               <img 
                 src="/logo.svg" 
                 alt="'Roo Logo" 
-                className="h-16 w-16"
+                className="h-10 w-10 md:h-16 md:w-16"
               />
-              <h1 className="text-3xl font-bold">'Roo</h1>
+              <h1 className="text-xl md:text-3xl font-bold">'Roo</h1>
             </Link>
             {session?.user && (
               <DropdownMenu>

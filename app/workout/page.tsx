@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
 
@@ -34,6 +34,7 @@ function WorkoutContent() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const [showMobileImages, setShowMobileImages] = useState(false);
+  const [showMusclesWorked, setShowMusclesWorked] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -475,6 +476,7 @@ function WorkoutContent() {
       await saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex + 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
+      setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
     }
   };
 
@@ -484,6 +486,7 @@ function WorkoutContent() {
       await saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex - 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
+      setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
     }
   };
 
@@ -547,15 +550,7 @@ function WorkoutContent() {
   };
 
   if (!program || !selectedDay) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-16 text-center">
-            <p className="text-muted-foreground mb-4">Loading workout...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   if (currentExercises.length === 0) {
@@ -627,127 +622,150 @@ function WorkoutContent() {
             {currentExercise && (
               <>
                 <div className="mb-6">
-                  <h3 className="font-semibold mb-3">Muscles Worked</h3>
-                  
-                  <div className="flex flex-col md:flex-row items-start gap-4">
-                    {/* Body Models */}
-                    <div className="flex-shrink-0 flex gap-3">
-                      {/* Front View */}
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-1 text-center">Front</div>
-                        <div className="relative">
-                          <Model
-                            data={getExerciseData()}
-                            highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
-                            style={{ width: '150px', height: '210px' }}
-                            bodyColor={bodyColor}
-                            type="anterior"
-                            onClick={(muscleStats) => handleMuscleClick(muscleStats, 'anterior')}
-                          />
-                          {clickedMuscle && clickedMuscle.view === 'anterior' && (
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                              {clickedMuscle.muscle}
-                            </div>
-                          )}
-                        </div>
+                  {/* Mobile: Collapsible header */}
+                  <div className="md:hidden mb-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowMusclesWorked(!showMusclesWorked)}
+                      className="w-full justify-between mb-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <BicepsFlexed className="h-4 w-4" />
+                        <span>Muscles Worked</span>
                       </div>
-                      {/* Back View - only show if needed */}
-                      {needsBackView() && (
+                      {showMusclesWorked ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Desktop: Always visible header */}
+                  <h3 className="hidden md:block font-semibold mb-3">Muscles Worked</h3>
+                  
+                  {/* Content: Hidden on mobile unless expanded, always visible on desktop */}
+                  <div className={`${showMusclesWorked ? 'block' : 'hidden'} md:block`}>
+                    <div className="flex flex-col md:flex-row items-start gap-4 2xl:gap-6">
+                      {/* Body Models */}
+                      <div className="flex-shrink-0 flex gap-3">
+                        {/* Front View */}
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1 text-center">Back</div>
+                          <div className="text-xs text-muted-foreground mb-1 text-center">Front</div>
                           <div className="relative">
                             <Model
                               data={getExerciseData()}
                               highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
                               style={{ width: '150px', height: '210px' }}
                               bodyColor={bodyColor}
-                              type="posterior"
-                              onClick={(muscleStats) => handleMuscleClick(muscleStats, 'posterior')}
+                              type="anterior"
+                              onClick={(muscleStats) => handleMuscleClick(muscleStats, 'anterior')}
                             />
-                            {clickedMuscle && clickedMuscle.view === 'posterior' && (
+                            {clickedMuscle && clickedMuscle.view === 'anterior' && (
                               <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
                                 {clickedMuscle.muscle}
                               </div>
                             )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Muscle List */}
-                    <div className="flex-1">
-                      <div className="space-y-3">
-                        {currentExercise.primaryMuscles.length > 0 && (
+                        {/* Back View - only show if needed */}
+                        {needsBackView() && (
                           <div>
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <div className="w-3 h-3 rounded bg-primary"></div>
-                              <span className="text-xs font-medium text-muted-foreground">Primary</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {currentExercise.primaryMuscles.map(muscle => {
-                                const mappedMuscle = mapMuscleName(muscle);
-                                const isHighlighted = highlightedMuscle === muscle && mappedMuscle;
-                                return (
-                                  <Badge 
-                                    key={muscle} 
-                                    className={`${isHighlighted ? 'bg-green-500 hover:bg-green-600 ring-2 ring-green-300' : 'bg-primary text-primary-foreground hover:bg-primary/90'} border-0 text-xs cursor-pointer transition-all`}
-                                    onClick={() => handleBadgeClick(muscle)}
-                                  >
-                                    {muscle}
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        {currentExercise.secondaryMuscles.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <div className="w-3 h-3 rounded bg-secondary"></div>
-                              <span className="text-xs font-medium text-muted-foreground">Secondary</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {currentExercise.secondaryMuscles.map(muscle => {
-                                const mappedMuscle = mapMuscleName(muscle);
-                                const isHighlighted = highlightedMuscle === muscle && mappedMuscle;
-                                return (
-                                  <Badge 
-                                    key={muscle} 
-                                    className={`${isHighlighted ? 'bg-green-500 hover:bg-green-600 ring-2 ring-green-300' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'} border-0 text-xs cursor-pointer transition-all`}
-                                    onClick={() => handleBadgeClick(muscle)}
-                                  >
-                                    {muscle}
-                                  </Badge>
-                                );
-                              })}
+                            <div className="text-xs text-muted-foreground mb-1 text-center">Back</div>
+                            <div className="relative">
+                              <Model
+                                data={getExerciseData()}
+                                highlightedColors={themeColors} // Primary, Secondary, Green for highlighted
+                                style={{ width: '150px', height: '210px' }}
+                                bodyColor={bodyColor}
+                                type="posterior"
+                                onClick={(muscleStats) => handleMuscleClick(muscleStats, 'posterior')}
+                              />
+                              {clickedMuscle && clickedMuscle.view === 'posterior' && (
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
+                                  {clickedMuscle.muscle}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Exercise Images - Direct display (3xl and above) */}
-                    {currentExercise.images.length > 0 && (
-                      <div className="hidden 2xl:block flex-shrink-0">
-                        <div className="grid grid-cols-2 gap-2">
-                          {currentExercise.images.map((img, idx) => (
-                            <div 
-                              key={idx} 
-                              className="relative w-[28rem] aspect-[850/567] rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => setExpandedImage(img)}
-                            >
-                              <Image
-                                src={`/exercise-images/${img}`}
-                                alt={`${currentExercise.name} ${idx + 1}`}
-                                fill
-                                className="object-contain"
-                                sizes="448px"
-                              />
+                      
+                      {/* Muscle List */}
+                      <div className="flex-1 min-w-0">
+                        <div className="space-y-3">
+                          {currentExercise.primaryMuscles.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-3 h-3 rounded bg-primary"></div>
+                                <span className="text-xs font-medium text-muted-foreground">Primary</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {currentExercise.primaryMuscles.map(muscle => {
+                                  const mappedMuscle = mapMuscleName(muscle);
+                                  const isHighlighted = highlightedMuscle === muscle && mappedMuscle;
+                                  return (
+                                    <Badge 
+                                      key={muscle} 
+                                      className={`${isHighlighted ? 'bg-green-500 hover:bg-green-600 ring-2 ring-green-300' : 'bg-primary text-primary-foreground hover:bg-primary/90'} border-0 text-xs cursor-pointer transition-all`}
+                                      onClick={() => handleBadgeClick(muscle)}
+                                    >
+                                      {muscle}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          ))}
+                          )}
+                          {currentExercise.secondaryMuscles.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-3 h-3 rounded bg-secondary"></div>
+                                <span className="text-xs font-medium text-muted-foreground">Secondary</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {currentExercise.secondaryMuscles.map(muscle => {
+                                  const mappedMuscle = mapMuscleName(muscle);
+                                  const isHighlighted = highlightedMuscle === muscle && mappedMuscle;
+                                  return (
+                                    <Badge 
+                                      key={muscle} 
+                                      className={`${isHighlighted ? 'bg-green-500 hover:bg-green-600 ring-2 ring-green-300' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'} border-0 text-xs cursor-pointer transition-all`}
+                                      onClick={() => handleBadgeClick(muscle)}
+                                    >
+                                      {muscle}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
+
+                      {/* Exercise Images - Direct display (2xl and above) */}
+                      {currentExercise.images.length > 0 && (
+                        <div className="hidden 2xl:block flex-shrink-0">
+                          <div className="grid grid-cols-2 gap-2">
+                            {currentExercise.images.map((img, idx) => (
+                              <div 
+                                key={idx} 
+                                className="relative w-[20rem] aspect-[850/567] rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setExpandedImage(img)}
+                              >
+                                <Image
+                                  src={`/exercise-images/${img}`}
+                                  alt={`${currentExercise.name} ${idx + 1}`}
+                                  fill
+                                  className="object-contain"
+                                  sizes="320px"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Exercise Images - Desktop dropdown (md to 2xl) */}
@@ -864,8 +882,18 @@ function WorkoutContent() {
                           <div className="relative">
                             <Input
                               type="number"
-                              value={set.weight || ''}
-                              onChange={(e) => updateSetLog(setIdx, { weight: parseFloat(e.target.value) || 0 })}
+                              value={set.weight ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || value === '-') {
+                                  updateSetLog(setIdx, { weight: undefined });
+                                } else {
+                                  const numValue = parseFloat(value);
+                                  if (!isNaN(numValue)) {
+                                    updateSetLog(setIdx, { weight: numValue });
+                                  }
+                                }
+                              }}
                               className="h-9 pr-8 text-sm"
                               placeholder="0"
                             />
@@ -927,7 +955,7 @@ function WorkoutContent() {
             Previous
           </Button>
           {currentExerciseIndex === currentExercises.length - 1 ? (
-            <Button onClick={finishWorkout} className="flex-1" size="lg" disabled={isFinishing}>
+            <Button onClick={finishWorkout} className="flex-1" disabled={isFinishing}>
               {isFinishing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -951,11 +979,7 @@ function WorkoutContent() {
 
 export default function WorkoutPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Loading...</div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <WorkoutContent />
     </Suspense>
   );

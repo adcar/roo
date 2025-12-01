@@ -20,6 +20,7 @@ export default function ProgramViewPage() {
   const { exercises } = useExercises();
   const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [selectedDayId, setSelectedDayId] = useState<string>('all');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | 'both'>('both');
 
@@ -29,12 +30,18 @@ export default function ProgramViewPage() {
       fetch(`/api/programs/${params.id}`)
         .then(res => {
           if (!res.ok) {
-            throw new Error('Program not found');
+            if (res.status === 404) {
+              setNotFound(true);
+            }
+            stopLoading();
+            return;
           }
           return res.json();
         })
         .then(data => {
-          setProgram(data);
+          if (data) {
+            setProgram(data);
+          }
           stopLoading();
         })
         .catch(error => {
@@ -215,7 +222,7 @@ export default function ProgramViewPage() {
     });
   }, [program, selectedDayId, selectedWeek, exercises]);
 
-  if (!program) {
+  if (notFound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -226,6 +233,10 @@ export default function ProgramViewPage() {
         </div>
       </div>
     );
+  }
+
+  if (!program) {
+    return null;
   }
 
   return (

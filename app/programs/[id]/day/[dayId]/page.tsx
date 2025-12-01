@@ -17,6 +17,7 @@ export default function DayViewPage() {
   const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
   const [day, setDay] = useState<WorkoutDay | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (params.id && params.dayId) {
@@ -24,15 +25,23 @@ export default function DayViewPage() {
       fetch(`/api/programs/${params.id}`)
         .then(res => {
           if (!res.ok) {
-            throw new Error('Program not found');
+            if (res.status === 404) {
+              setNotFound(true);
+            }
+            stopLoading();
+            return;
           }
           return res.json();
         })
         .then(data => {
-          setProgram(data);
-          const foundDay = data.days.find((d: WorkoutDay) => d.id === params.dayId);
-          if (foundDay) {
-            setDay(foundDay);
+          if (data) {
+            setProgram(data);
+            const foundDay = data.days.find((d: WorkoutDay) => d.id === params.dayId);
+            if (foundDay) {
+              setDay(foundDay);
+            } else {
+              setNotFound(true);
+            }
           }
           stopLoading();
         })
@@ -47,7 +56,7 @@ export default function DayViewPage() {
     return exercises.find(ex => ex.id === exerciseId);
   };
 
-  if (!program || !day) {
+  if (notFound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -58,6 +67,10 @@ export default function DayViewPage() {
         </div>
       </div>
     );
+  }
+
+  if (!program || !day) {
+    return null;
   }
 
   return (
