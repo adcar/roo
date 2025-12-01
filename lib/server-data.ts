@@ -248,13 +248,14 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
         ) as any
       );
 
-    // Filter workouts with 4+ exercises and count per user
+    // Count all workouts per user (any workout counts, even with just 1 exercise)
     const userWorkoutCounts = new Map<string, number>();
     
     for (const log of logs) {
       try {
         const exercises = JSON.parse(log.exercises);
-        if (Array.isArray(exercises) && exercises.length >= 4) {
+        // Any workout counts for the leaderboard (even with just 1 exercise)
+        if (Array.isArray(exercises) && exercises.length >= 1) {
           const currentCount = userWorkoutCounts.get(log.userId) || 0;
           userWorkoutCounts.set(log.userId, currentCount + 1);
         }

@@ -150,16 +150,14 @@ export async function GET(request: Request) {
         ) as any
       );
 
-    // Filter workouts with 4+ exercises and count per user
-    // NOTE: Leaderboard entries require 4+ exercises per workout (stricter than streaks)
-    // Streaks count ANY workout (even 1 exercise), but leaderboard entries need 4+ exercises
+    // Count all workouts per user (any workout counts, even with just 1 exercise)
     const userWorkoutCounts = new Map<string, number>();
     
     for (const log of logs) {
       try {
         const exercises = JSON.parse(log.exercises);
-        // A workout qualifies for leaderboard if it has 4 or more exercises
-        if (Array.isArray(exercises) && exercises.length >= 4) {
+        // Any workout counts for the leaderboard (even with just 1 exercise)
+        if (Array.isArray(exercises) && exercises.length >= 1) {
           const currentCount = userWorkoutCounts.get(log.userId) || 0;
           userWorkoutCounts.set(log.userId, currentCount + 1);
         }

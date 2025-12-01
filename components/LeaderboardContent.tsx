@@ -102,7 +102,7 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
             Top performers for {currentMonth}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Rankings are based on completed workouts with 4+ exercises. Complete at least 1 qualifying workout to appear on the leaderboard.
+            Rankings are based on completed workouts. Complete at least 1 workout to appear on the leaderboard.
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
                 No one has qualified for the leaderboard this month yet.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                Complete at least 1 workout with 4+ exercises to appear on the leaderboard!
+                Complete at least 1 workout to appear on the leaderboard!
               </p>
             </CardContent>
           </Card>
@@ -185,10 +185,10 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>
-              • A workout qualifies if it contains 4 or more exercises
+              • Any workout counts for the leaderboard - even workouts with just 1 exercise
             </p>
             <p>
-              • You need to complete at least 1 qualifying workout (with 4+ exercises) to appear on the leaderboard
+              • You need to complete at least 1 workout to appear on the leaderboard
             </p>
             <p>
               • Rankings are updated automatically based on workout logs

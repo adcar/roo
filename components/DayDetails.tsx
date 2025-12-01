@@ -1,6 +1,6 @@
 "use client"
 
-import { WorkoutLog } from "@/types/exercise"
+import { WorkoutLog, Exercise } from "@/types/exercise"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -9,7 +9,7 @@ interface DayDetailsProps {
   date: Date | null
   workouts: WorkoutLog[]
   programs: Array<{ id: string; name: string }>
-  exercises: Array<{ id: string; name: string }>
+  exercises: Array<{ id: string; name: string; category?: Exercise['category'] }>
 }
 
 export function DayDetails({ date, workouts, programs, exercises }: DayDetailsProps) {
@@ -92,11 +92,32 @@ export function DayDetails({ date, workouts, programs, exercises }: DayDetailsPr
                       return null
                     }
 
+                    const isCardio = exercise?.category === 'cardio'
+
                     return (
                       <div key={exerciseIdx} className="space-y-2">
                         <h4 className="font-semibold text-base">{exerciseName}</h4>
                         <div className="space-y-2">
                           {completedSets.map((set, setIdx) => {
+                            if (isCardio) {
+                              return (
+                                <div
+                                  key={setIdx}
+                                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
+                                >
+                                  <Badge variant="outline" className="w-12 justify-center shrink-0">
+                                    {setIdx + 1}
+                                  </Badge>
+                                  <div className="flex-1">
+                                    <div className="text-xs text-muted-foreground">Distance</div>
+                                    <div className="font-semibold">
+                                      {set.distance !== undefined ? `${set.distance} miles` : 'N/A'}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            }
+
                             const reps = set.reps ?? (set.repWeights?.length ?? 0)
                             const weight = set.weight ?? (
                               set.repWeights && set.repWeights.length > 0

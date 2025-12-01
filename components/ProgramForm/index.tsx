@@ -189,6 +189,10 @@ export default function ProgramForm({
     return exercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
   };
 
+  const getExerciseCategory = (exerciseId: string) => {
+    return exercises.find(ex => ex.id === exerciseId)?.category;
+  };
+
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -381,6 +385,7 @@ export default function ProgramForm({
             }}
             onDeleteClick={handleDeleteClick}
             getExerciseName={getExerciseName}
+            getExerciseCategory={getExerciseCategory}
             updateExercise={updateExercise}
             removeExercise={removeExercise}
             onAddExercise={(dayId, week) => {

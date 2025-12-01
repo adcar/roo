@@ -143,9 +143,15 @@ export default function DayViewPage() {
                                 <div className="flex-1">
                                   <h4 className="font-semibold mb-1">{exercise.name}</h4>
                                   <div className="flex gap-3 text-sm text-muted-foreground">
-                                    {programExercise.sets && <span>{programExercise.sets} sets</span>}
-                                    {programExercise.reps && <span>× {programExercise.reps} reps</span>}
-                                    {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
+                                    {exercise.category === 'cardio' ? (
+                                      programExercise.distance && <span>{programExercise.distance} miles</span>
+                                    ) : (
+                                      <>
+                                        {programExercise.sets && <span>{programExercise.sets} sets</span>}
+                                        {programExercise.reps && <span>× {programExercise.reps} reps</span>}
+                                        {programExercise.weight && <span>@ {programExercise.weight} lbs</span>}
+                                      </>
+                                    )}
                                   </div>
                                   {programExercise.notes && (
                                     <div className="text-sm text-muted-foreground mt-1 italic">

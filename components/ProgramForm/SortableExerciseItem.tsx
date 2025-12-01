@@ -12,10 +12,12 @@ export default function SortableExerciseItem({
   week,
   index,
   getExerciseName,
+  getExerciseCategory,
   updateExercise,
   removeExercise,
 }: SortableExerciseItemProps) {
   const draggableId = `${dayId}-${week}-${index}`;
+  const isCardio = getExerciseCategory(exercise.exerciseId) === 'cardio';
 
   return (
     <Draggable draggableId={draggableId} index={index}>
@@ -64,38 +66,54 @@ export default function SortableExerciseItem({
                   <X className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    value={exercise.sets || ''}
-                    onChange={(e) => updateExercise(dayId, week, index, { sets: parseInt(e.target.value) || 0 })}
-                    placeholder="Sets"
-                    className="h-7 text-xs"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+              {isCardio ? (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={exercise.distance || ''}
+                      onChange={(e) => updateExercise(dayId, week, index, { distance: parseFloat(e.target.value) || 0 })}
+                      placeholder="Distance (miles)"
+                      className="h-7 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    value={exercise.reps || ''}
-                    onChange={(e) => updateExercise(dayId, week, index, { reps: parseInt(e.target.value) || 0 })}
-                    placeholder="Reps"
-                    className="h-7 text-xs"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+              ) : (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      value={exercise.sets || ''}
+                      onChange={(e) => updateExercise(dayId, week, index, { sets: parseInt(e.target.value) || 0 })}
+                      placeholder="Sets"
+                      className="h-7 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      value={exercise.reps || ''}
+                      onChange={(e) => updateExercise(dayId, week, index, { reps: parseInt(e.target.value) || 0 })}
+                      placeholder="Reps"
+                      className="h-7 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      value={exercise.weight || ''}
+                      onChange={(e) => updateExercise(dayId, week, index, { weight: parseInt(e.target.value) || 0 })}
+                      placeholder="Weight"
+                      className="h-7 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    value={exercise.weight || ''}
-                    onChange={(e) => updateExercise(dayId, week, index, { weight: parseInt(e.target.value) || 0 })}
-                    placeholder="Weight"
-                    className="h-7 text-xs"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

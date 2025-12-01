@@ -551,7 +551,7 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                   date={selectedDate}
                   workouts={selectedDate ? getWorkoutsForDate(selectedDate) : []}
                   programs={programs.map(p => ({ id: p.id, name: p.name }))}
-                  exercises={exercises.map(e => ({ id: e.id, name: e.name }))}
+                  exercises={exercises.map(e => ({ id: e.id, name: e.name, category: e.category }))}
                 />
               </div>
 
@@ -729,6 +729,7 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                         const exercise = exercises.find(ex => ex.id === exerciseLog.exerciseId);
                         const exerciseName = exercise?.name || exerciseLog.exerciseId;
                         const completedSets = exerciseLog.sets.filter(s => s.completed);
+                        const isCardio = exercise?.category === 'cardio';
                         
                         return (
                           <Card key={idx}>
@@ -743,20 +744,29 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                                       <Badge variant="outline" className="w-12 justify-center">
                                         {setIdx + 1}
                                       </Badge>
-                                      <div className="flex-1 grid grid-cols-2 gap-4">
-                                        <div>
-                                          <div className="text-xs text-muted-foreground">Reps</div>
+                                      {isCardio ? (
+                                        <div className="flex-1">
+                                          <div className="text-xs text-muted-foreground">Distance</div>
                                           <div className="font-semibold">
-                                            {set.reps ?? (set.repWeights?.length ?? 0)}
+                                            {set.distance !== undefined ? `${set.distance} miles` : 'N/A'}
                                           </div>
                                         </div>
-                                        <div>
-                                          <div className="text-xs text-muted-foreground">Weight</div>
-                                          <div className="font-semibold">
-                                            {set.weight ?? (set.repWeights ? (set.repWeights.reduce((a, b) => a + b, 0) / set.repWeights.length).toFixed(1) : 0)} lbs
+                                      ) : (
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                          <div>
+                                            <div className="text-xs text-muted-foreground">Reps</div>
+                                            <div className="font-semibold">
+                                              {set.reps ?? (set.repWeights?.length ?? 0)}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div className="text-xs text-muted-foreground">Weight</div>
+                                            <div className="font-semibold">
+                                              {set.weight ?? (set.repWeights ? (set.repWeights.reduce((a, b) => a + b, 0) / set.repWeights.length).toFixed(1) : 0)} lbs
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
+                                      )}
                                     </div>
                                   ))
                                 ) : (

@@ -15,6 +15,7 @@ export default function WeekColumn({
   exercises,
   weekIds,
   getExerciseName,
+  getExerciseCategory,
   updateExercise,
   removeExercise,
   onAddExercise,
@@ -56,6 +57,7 @@ export default function WeekColumn({
                       week={week}
                       index={idx}
                       getExerciseName={getExerciseName}
+                      getExerciseCategory={getExerciseCategory}
                       updateExercise={updateExercise}
                       removeExercise={removeExercise}
                     />

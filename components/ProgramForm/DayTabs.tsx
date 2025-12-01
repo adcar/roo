@@ -14,6 +14,7 @@ interface DayTabsProps {
   onTabChange: (value: string) => void;
   onDeleteClick: (dayId: string) => void;
   getExerciseName: (id: string) => string;
+  getExerciseCategory: (id: string) => string | undefined;
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: any) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
   onAddExercise: (dayId: string, week: 'A' | 'B') => void;
@@ -30,6 +31,7 @@ export default function DayTabs({
   onTabChange,
   onDeleteClick,
   getExerciseName,
+  getExerciseCategory,
   updateExercise,
   removeExercise,
   onAddExercise,
@@ -224,6 +226,7 @@ export default function DayTabs({
                         exercises={exercises}
                         weekIds={weekIds}
                         getExerciseName={getExerciseName}
+                        getExerciseCategory={getExerciseCategory}
                         updateExercise={updateExercise}
                         removeExercise={removeExercise}
                         onAddExercise={() => onAddExercise(day.id, week)}

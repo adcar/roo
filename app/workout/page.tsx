@@ -79,7 +79,7 @@ function WorkoutContent() {
       // For non-split programs, always use weekA
       const isSplit = program?.isSplit !== false;
       const effectiveWeek = isSplit ? selectedWeek : 'A';
-      const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
+      const programExercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
       
       // Helper function to fetch workout logs
       const fetchWorkoutLogs = (progressDataRef: { progress?: any }) => {
@@ -107,18 +107,24 @@ function WorkoutContent() {
             const mostRecentLog = weekLogs.length > 0 ? weekLogs[0] : null;
             
             // Initialize logs with defaults (either from last workout or program defaults)
-            const logs: ExerciseLog[] = exercises.map(ex => {
+            const logs: ExerciseLog[] = programExercises.map(ex => {
               // Try to find this exercise in the most recent log
               const previousExerciseLog = mostRecentLog?.exercises.find(
                 (e: ExerciseLog) => e.exerciseId === ex.exerciseId
               );
               
+              // Get exercise details to check if it's cardio
+              const exerciseDetails = exercises.find(e => e.id === ex.exerciseId);
+              const isCardio = exerciseDetails?.category === 'cardio';
+              
               // Initialize sets - use last workout's set count if available, otherwise program default
-              const setCount = previousExerciseLog?.sets.length || ex.sets || 0;
+              // For cardio, default to 1 set if not specified
+              const setCount = previousExerciseLog?.sets.length || ex.sets || (isCardio ? 1 : 0);
               
               // Program defaults
               const defaultReps = ex.reps || 0;
               const defaultWeight = ex.weight || 0;
+              const defaultDistance = ex.distance || 0;
               
               return {
                 exerciseId: ex.exerciseId,
@@ -126,12 +132,21 @@ function WorkoutContent() {
                   // Try to get values from the same set index in previous workout
                   if (previousExerciseLog && previousExerciseLog.sets[setIndex]) {
                     const previousSet = previousExerciseLog.sets[setIndex];
-                    if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
-                      return {
-                        reps: previousSet.reps,
-                        weight: previousSet.weight,
-                        completed: false,
-                      };
+                    if (isCardio) {
+                      if (previousSet.completed && previousSet.distance !== undefined) {
+                        return {
+                          distance: previousSet.distance,
+                          completed: false,
+                        };
+                      }
+                    } else {
+                      if (previousSet.completed && previousSet.reps !== undefined && previousSet.weight !== undefined) {
+                        return {
+                          reps: previousSet.reps,
+                          weight: previousSet.weight,
+                          completed: false,
+                        };
+                      }
                     }
                   }
                   
@@ -141,22 +156,38 @@ function WorkoutContent() {
                     const completedSets = previousExerciseLog.sets.filter((s: SetLog) => s.completed);
                     if (completedSets.length > 0) {
                       const lastSet = completedSets[completedSets.length - 1];
-                      if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
-                        return {
-                          reps: lastSet.reps,
-                          weight: lastSet.weight,
-                          completed: false,
-                        };
+                      if (isCardio) {
+                        if (lastSet.distance !== undefined) {
+                          return {
+                            distance: lastSet.distance,
+                            completed: false,
+                          };
+                        }
+                      } else {
+                        if (lastSet.reps !== undefined && lastSet.weight !== undefined) {
+                          return {
+                            reps: lastSet.reps,
+                            weight: lastSet.weight,
+                            completed: false,
+                          };
+                        }
                       }
                     }
                   }
                   
                   // Final fallback to program defaults
-                  return {
-                    reps: defaultReps,
-                    weight: defaultWeight,
-                    completed: false,
-                  };
+                  if (isCardio) {
+                    return {
+                      distance: defaultDistance,
+                      completed: false,
+                    };
+                  } else {
+                    return {
+                      reps: defaultReps,
+                      weight: defaultWeight,
+                      completed: false,
+                    };
+                  }
                 }),
               };
             });
@@ -170,14 +201,29 @@ function WorkoutContent() {
             console.error('Error fetching previous logs:', err);
             // Fallback to program defaults if fetch fails
             if (!progressDataRef.progress) {
-              const logs: ExerciseLog[] = exercises.map(ex => ({
-                exerciseId: ex.exerciseId,
-                sets: Array(ex.sets || 0).fill(null).map(() => ({
-                  reps: ex.reps || 0,
-                  weight: ex.weight || 0,
-                  completed: false,
-                })),
-              }));
+              const logs: ExerciseLog[] = programExercises.map(ex => {
+                const exerciseDetails = exercises.find(e => e.id === ex.exerciseId);
+                const isCardio = exerciseDetails?.category === 'cardio';
+                const setCount = ex.sets || (isCardio ? 1 : 0);
+                
+                return {
+                  exerciseId: ex.exerciseId,
+                  sets: Array(setCount).fill(null).map(() => {
+                    if (isCardio) {
+                      return {
+                        distance: ex.distance || 0,
+                        completed: false,
+                      };
+                    } else {
+                      return {
+                        reps: ex.reps || 0,
+                        weight: ex.weight || 0,
+                        completed: false,
+                      };
+                    }
+                  }),
+                };
+              });
               setExerciseLogs(logs);
             }
           });
@@ -213,19 +259,34 @@ function WorkoutContent() {
         .catch(err => {
           console.error('Error fetching progress:', err);
           // If progress fetch fails, still initialize logs
-          const exercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
-          const logs: ExerciseLog[] = exercises.map(ex => ({
-            exerciseId: ex.exerciseId,
-            sets: Array(ex.sets || 0).fill(null).map(() => ({
-              reps: ex.reps || 0,
-              weight: ex.weight || 0,
-              completed: false,
-            })),
-          }));
+          const programExercises = effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
+          const logs: ExerciseLog[] = programExercises.map(ex => {
+            const exerciseDetails = exercises.find(e => e.id === ex.exerciseId);
+            const isCardio = exerciseDetails?.category === 'cardio';
+            const setCount = ex.sets || (isCardio ? 1 : 0);
+            
+            return {
+              exerciseId: ex.exerciseId,
+              sets: Array(setCount).fill(null).map(() => {
+                if (isCardio) {
+                  return {
+                    distance: ex.distance || 0,
+                    completed: false,
+                  };
+                } else {
+                  return {
+                    reps: ex.reps || 0,
+                    weight: ex.weight || 0,
+                    completed: false,
+                  };
+                }
+              }),
+            };
+          });
           setExerciseLogs(logs);
         });
     }
-  }, [selectedDay, selectedWeek, programId, dayId, program]);
+  }, [selectedDay, selectedWeek, programId, dayId, program, exercises]);
 
   const currentExercises = selectedDay
     ? (() => {
@@ -852,74 +913,108 @@ function WorkoutContent() {
                 <Separator className="my-6" />
 
                 <div>
-                  <h3 className="font-semibold text-lg mb-4">Track Your Sets</h3>
+                  <h3 className="font-semibold text-lg mb-4">
+                    {currentExercise?.category === 'cardio' ? 'Track Your Distance' : 'Track Your Sets'}
+                  </h3>
                   <div className="space-y-1.5">
-                    {currentLog?.sets.map((set, setIdx) => (
-                      <div
-                        key={setIdx}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
-                          set.completed
-                            ? 'bg-primary/10 border-primary/30 dark:bg-primary/20'
-                            : 'bg-card border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted text-xs font-semibold text-muted-foreground">
-                          {setIdx + 1}
-                        </div>
-                        <div className="flex-1 grid grid-cols-2 gap-2">
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={set.reps || ''}
-                              onChange={(e) => updateSetLog(setIdx, { reps: parseInt(e.target.value) || 0 })}
-                              className="h-9 pr-8 text-sm"
-                              placeholder="0"
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                              reps
-                            </span>
-                          </div>
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              value={set.weight ?? ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === '' || value === '-') {
-                                  updateSetLog(setIdx, { weight: undefined });
-                                } else {
-                                  const numValue = parseFloat(value);
-                                  if (!isNaN(numValue)) {
-                                    updateSetLog(setIdx, { weight: numValue });
-                                  }
-                                }
-                              }}
-                              className="h-9 pr-8 text-sm"
-                              placeholder="0"
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                              lbs
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant={set.completed ? "default" : "ghost"}
-                          size="sm"
-                          onClick={() => toggleSetComplete(setIdx)}
-                          className={`flex-shrink-0 h-9 w-9 p-0 ${
+                    {currentLog?.sets.map((set, setIdx) => {
+                      const isCardio = currentExercise?.category === 'cardio';
+                      
+                      return (
+                        <div
+                          key={setIdx}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
                             set.completed
-                              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                              : 'hover:bg-muted'
+                              ? 'bg-primary/10 border-primary/30 dark:bg-primary/20'
+                              : 'bg-card border-border hover:border-primary/50'
                           }`}
                         >
-                          {set.completed ? (
-                            <X className="h-4 w-4" />
+                          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                            {setIdx + 1}
+                          </div>
+                          {isCardio ? (
+                            <div className="flex-1">
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={set.distance ?? ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || value === '-') {
+                                      updateSetLog(setIdx, { distance: undefined });
+                                    } else {
+                                      const numValue = parseFloat(value);
+                                      if (!isNaN(numValue)) {
+                                        updateSetLog(setIdx, { distance: numValue });
+                                      }
+                                    }
+                                  }}
+                                  className="h-9 pr-12 text-sm"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                  miles
+                                </span>
+                              </div>
+                            </div>
                           ) : (
-                            <Check className="h-4 w-4 opacity-50" />
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  value={set.reps || ''}
+                                  onChange={(e) => updateSetLog(setIdx, { reps: parseInt(e.target.value) || 0 })}
+                                  className="h-9 pr-8 text-sm"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                  reps
+                                </span>
+                              </div>
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  value={set.weight ?? ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || value === '-') {
+                                      updateSetLog(setIdx, { weight: undefined });
+                                    } else {
+                                      const numValue = parseFloat(value);
+                                      if (!isNaN(numValue)) {
+                                        updateSetLog(setIdx, { weight: numValue });
+                                      }
+                                    }
+                                  }}
+                                  className="h-9 pr-8 text-sm"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                  lbs
+                                </span>
+                              </div>
+                            </div>
                           )}
-                        </Button>
-                      </div>
-                    ))}
+                          <Button
+                            variant={set.completed ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => toggleSetComplete(setIdx)}
+                            className={`flex-shrink-0 h-9 w-9 p-0 ${
+                              set.completed
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            {set.completed ? (
+                              <X className="h-4 w-4" />
+                            ) : (
+                              <Check className="h-4 w-4 opacity-50" />
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>

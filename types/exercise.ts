@@ -19,6 +19,7 @@ export interface ProgramExercise {
   sets?: number;
   reps?: number;
   weight?: number;
+  distance?: number; // Distance in miles for cardio exercises
   notes?: string;
   order?: number; // Explicit order field for database storage
 }
@@ -56,6 +57,7 @@ export interface ExerciseLog {
 export interface SetLog {
   reps?: number;
   weight?: number;
+  distance?: number; // Distance in miles for cardio exercises
   repWeights?: number[];
   completed: boolean;
 }

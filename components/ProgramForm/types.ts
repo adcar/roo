@@ -14,6 +14,7 @@ export interface SortableExerciseItemProps {
   week: 'A' | 'B';
   index: number;
   getExerciseName: (id: string) => string;
+  getExerciseCategory: (id: string) => string | undefined;
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: Partial<ProgramExercise>) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
 }
@@ -36,6 +37,7 @@ export interface WeekColumnProps {
   exercises: ProgramExercise[];
   weekIds: string[];
   getExerciseName: (id: string) => string;
+  getExerciseCategory: (id: string) => string | undefined;
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: Partial<ProgramExercise>) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
   onAddExercise: () => void;
