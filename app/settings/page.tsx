@@ -7,16 +7,33 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/toast';
 import { Settings, Flame } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { authClient } from '@/lib/auth-client';
 import { useLoading } from '@/components/LoadingProvider';
 
+const ALWAYS_ENABLED_EQUIPMENT = ['body only', 'other'];
+
+const SELECTABLE_EQUIPMENT_OPTIONS = [
+  'dumbbell',
+  'barbell',
+  'kettlebells',
+  'cable',
+  'machine',
+  'bands',
+  'medicine ball',
+  'exercise ball',
+  'foam roll',
+  'e-z curl bar',
+];
+
 export default function SettingsPage() {
   const { startLoading, stopLoading } = useLoading();
   const [weekMapping, setWeekMapping] = useState<string>('oddA');
   const [inspirationQuote, setInspirationQuote] = useState<string>('');
+  const [availableEquipment, setAvailableEquipment] = useState<string[]>([]);
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [longestStreak, setLongestStreak] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -40,6 +57,7 @@ export default function SettingsPage() {
         const settingsData = await settingsResponse.json();
         setWeekMapping(settingsData.weekMapping || 'oddA');
         setInspirationQuote(settingsData.inspirationQuote || '');
+        setAvailableEquipment(settingsData.availableEquipment || []);
         
         if (streaksResponse && streaksResponse.ok) {
           const streaksData = await streaksResponse.json();
@@ -73,6 +91,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           weekMapping,
           inspirationQuote: inspirationQuote.trim() || null,
+          availableEquipment,
         }),
       });
 
@@ -159,6 +178,77 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground mt-4 text-center">
                 Complete at least 2 workouts per week to maintain your streak. Any workout counts - even a single exercise! Streaks never reset and last forever. Streaks are public on the leaderboard!
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Available Equipment</CardTitle>
+              <CardDescription>
+                Select the equipment you have available. Exercise search results will be filtered to only show exercises you can do with your equipment. Bodyweight and "other" exercises are always included.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {/* Always enabled equipment (disabled checkboxes) */}
+                {ALWAYS_ENABLED_EQUIPMENT.map((equipment) => (
+                  <div key={equipment} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`equipment-${equipment}`}
+                      checked={true}
+                      disabled
+                    />
+                    <label
+                      htmlFor={`equipment-${equipment}`}
+                      className="text-sm font-medium leading-none capitalize text-muted-foreground cursor-not-allowed"
+                    >
+                      {equipment}
+                    </label>
+                  </div>
+                ))}
+                {/* Selectable equipment */}
+                {SELECTABLE_EQUIPMENT_OPTIONS.map((equipment) => (
+                  <div key={equipment} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`equipment-${equipment}`}
+                      checked={availableEquipment.includes(equipment)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setAvailableEquipment([...availableEquipment, equipment]);
+                        } else {
+                          setAvailableEquipment(availableEquipment.filter(eq => eq !== equipment));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`equipment-${equipment}`}
+                      className="text-sm font-medium leading-none cursor-pointer capitalize"
+                    >
+                      {equipment}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {availableEquipment.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No additional equipment selected. Only bodyweight and "other" exercises will be shown in search results.
+                </p>
+              )}
+              {availableEquipment.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">Selected:</span>
+                  {ALWAYS_ENABLED_EQUIPMENT.map((eq) => (
+                    <Badge key={eq} variant="secondary" className="text-xs capitalize opacity-60">
+                      {eq} (always)
+                    </Badge>
+                  ))}
+                  {availableEquipment.map((eq) => (
+                    <Badge key={eq} variant="secondary" className="text-xs capitalize">
+                      {eq}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

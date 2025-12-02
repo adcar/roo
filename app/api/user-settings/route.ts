@@ -19,12 +19,18 @@ export async function GET() {
       return NextResponse.json({ 
         weekMapping: 'oddA',
         inspirationQuote: null,
+        availableEquipment: null,
       });
     }
+
+    const availableEquipment = settings[0].availableEquipment 
+      ? JSON.parse(settings[0].availableEquipment) 
+      : null;
 
     return NextResponse.json({ 
       weekMapping: settings[0].weekMapping,
       inspirationQuote: settings[0].inspirationQuote || null,
+      availableEquipment,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -39,7 +45,7 @@ export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
     const body = await request.json();
-    const { weekMapping, inspirationQuote } = body;
+    const { weekMapping, inspirationQuote, availableEquipment } = body;
 
     const db = await getDb();
     const now = new Date().toISOString();
@@ -68,6 +74,12 @@ export async function PUT(request: Request) {
       updateData.inspirationQuote = inspirationQuote || null;
     }
 
+    if (availableEquipment !== undefined) {
+      updateData.availableEquipment = availableEquipment && availableEquipment.length > 0
+        ? JSON.stringify(availableEquipment)
+        : null;
+    }
+
     if (existing.length > 0) {
       await db
         .update(schema.userSettings)
@@ -75,12 +87,32 @@ export async function PUT(request: Request) {
         .where(eq(schema.userSettings.userId, userId));
     } else {
       // Insert new settings
-      await db.insert(schema.userSettings).values({
+      const insertData: any = {
         userId,
         weekMapping: weekMapping || 'oddA',
         inspirationQuote: inspirationQuote || null,
         updatedAt: now,
-      });
+      };
+      
+      if (availableEquipment !== undefined) {
+        insertData.availableEquipment = availableEquipment && availableEquipment.length > 0
+          ? JSON.stringify(availableEquipment)
+          : null;
+      }
+      
+      await db.insert(schema.userSettings).values(insertData);
+    }
+
+    // Get the saved availableEquipment value
+    let savedAvailableEquipment = null;
+    if (updateData.availableEquipment !== undefined) {
+      // We just updated it, so use the updated value
+      savedAvailableEquipment = updateData.availableEquipment 
+        ? JSON.parse(updateData.availableEquipment) 
+        : null;
+    } else if (existing.length > 0 && existing[0].availableEquipment) {
+      // Use existing value
+      savedAvailableEquipment = JSON.parse(existing[0].availableEquipment);
     }
 
     return NextResponse.json({ 
@@ -88,6 +120,7 @@ export async function PUT(request: Request) {
       inspirationQuote: updateData.inspirationQuote !== undefined 
         ? updateData.inspirationQuote 
         : (existing[0]?.inspirationQuote || null),
+      availableEquipment: savedAvailableEquipment,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

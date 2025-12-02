@@ -2,6 +2,7 @@
 
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useExercises, filterExercises } from '@/hooks/useExercises';
+import { useAvailableEquipment } from '@/hooks/useAvailableEquipment';
 import { Exercise } from '@/types/exercise';
 import { SearchInput } from './SearchInput';
 import { ExerciseFilters } from './ExerciseFilters';
@@ -10,13 +11,15 @@ import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, X } from 'lucide-react';
 
 // Lazy load the CreateExerciseDialog to avoid loading it until needed
 const CreateExerciseDialog = lazy(() => import('./CreateExerciseDialog').then(module => ({ default: module.CreateExerciseDialog })));
 
 export default function ExercisesTab() {
   const { exercises, loading, error, refetch } = useExercises();
+  const { availableEquipment } = useAvailableEquipment();
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -28,6 +31,7 @@ export default function ExercisesTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('builtin');
+  const [equipmentFilterEnabled, setEquipmentFilterEnabled] = useState(true);
   const exercisesPerPage = 20;
 
   // Separate exercises into default and custom
@@ -50,13 +54,14 @@ export default function ExercisesTab() {
       primaryMuscle: selectedMuscle && selectedMuscle !== 'all' ? selectedMuscle : undefined,
       level: selectedLevel && selectedLevel !== 'all' ? selectedLevel : undefined,
       category: selectedCategory && selectedCategory !== 'all' ? selectedCategory : undefined,
+      availableEquipment: equipmentFilterEnabled && availableEquipment && availableEquipment.length > 0 ? availableEquipment : undefined,
     });
-  }, [tabExercises, search, selectedMuscle, selectedLevel, selectedCategory]);
+  }, [tabExercises, search, selectedMuscle, selectedLevel, selectedCategory, equipmentFilterEnabled, availableEquipment]);
 
   // Reset to page 1 when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [search, selectedMuscle, selectedLevel, selectedCategory, activeTab]);
+  }, [search, selectedMuscle, selectedLevel, selectedCategory, activeTab, equipmentFilterEnabled]);
 
   if (loading) {
     return <div className="text-center py-8">Loading exercises...</div>;
@@ -106,6 +111,23 @@ export default function ExercisesTab() {
           {filteredExercises.length !== tabExercises.length && ` (filtered from ${tabExercises.length} total)`}
         </p>
       </div>
+
+      {equipmentFilterEnabled && availableEquipment && availableEquipment.length > 0 && (
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-xs">
+            Filtering by your equipment
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEquipmentFilterEnabled(false)}
+            className="h-7 px-2 text-xs"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Show all exercises
+          </Button>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <div className="flex flex-wrap gap-2 mb-8 items-center justify-between">

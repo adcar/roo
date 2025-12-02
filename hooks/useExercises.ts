@@ -46,10 +46,11 @@ export function filterExercises(
     equipment?: string;
     level?: string;
     category?: string;
+    availableEquipment?: string[] | null; // Array of equipment user has available
   }
 ) {
   // Early return if no filters
-  if (!filters.search && !filters.primaryMuscle && !filters.equipment && !filters.level && !filters.category) {
+  if (!filters.search && !filters.primaryMuscle && !filters.equipment && !filters.level && !filters.category && !filters.availableEquipment) {
     return exercises;
   }
   
@@ -68,6 +69,17 @@ export function filterExercises(
     }
     if (filters.category && exercise.category !== filters.category) {
       return false;
+    }
+    // Filter by available equipment: show exercises that use equipment in the list, or null/body only/other
+    if (filters.availableEquipment && filters.availableEquipment.length > 0) {
+      const exerciseEquipment = exercise.equipment?.toLowerCase() || null;
+      const hasEquipment = exerciseEquipment === null || 
+                          exerciseEquipment === 'body only' ||
+                          exerciseEquipment === 'other' ||
+                          filters.availableEquipment.some(eq => eq.toLowerCase() === exerciseEquipment);
+      if (!hasEquipment) {
+        return false;
+      }
     }
     return true;
   });

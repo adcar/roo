@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense, lazy } from 'react';
 import Image from 'next/image';
 import { filterExercises } from '@/hooks/useExercises';
+import { useAvailableEquipment } from '@/hooks/useAvailableEquipment';
 import { Exercise } from '@/types/exercise';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ALL_MUSCLE_OPTIONS } from '@/components/ExercisesTab/utils';
-import { Plus, Info } from 'lucide-react';
+import { Plus, Info, X } from 'lucide-react';
 import { HighlightedText } from '@/components/HighlightedText';
 
 // Lazy load CreateExerciseDialog
@@ -34,7 +35,10 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedExerciseForDetails, setSelectedExerciseForDetails] = useState<Exercise | null>(null);
+  const [equipmentFilterEnabled, setEquipmentFilterEnabled] = useState(true);
   const exercisesPerPage = 20;
+
+  const { availableEquipment } = useAvailableEquipment();
 
   // Use static list instead of computing from exercises to avoid lag
   const allMuscles = ALL_MUSCLE_OPTIONS;
@@ -44,13 +48,14 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
       search,
       primaryMuscle: selectedMuscle && selectedMuscle !== 'all' ? selectedMuscle : undefined,
       level: selectedLevel && selectedLevel !== 'all' ? selectedLevel : undefined,
+      availableEquipment: equipmentFilterEnabled && availableEquipment && availableEquipment.length > 0 ? availableEquipment : undefined,
     });
-  }, [exercises, search, selectedMuscle, selectedLevel]);
+  }, [exercises, search, selectedMuscle, selectedLevel, equipmentFilterEnabled, availableEquipment]);
 
   // Reset to page 1 when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [search, selectedMuscle, selectedLevel]);
+  }, [search, selectedMuscle, selectedLevel, equipmentFilterEnabled]);
 
   const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
   const startIndex = (currentPage - 1) * exercisesPerPage;
@@ -62,6 +67,23 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
         <DialogHeader>
           <DialogTitle className="text-2xl">Select Exercise</DialogTitle>
         </DialogHeader>
+
+        {equipmentFilterEnabled && availableEquipment && availableEquipment.length > 0 && (
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs">
+              Filtering by your equipment
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilterEnabled(false)}
+              className="h-6 px-2 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Show all exercises
+            </Button>
+          </div>
+        )}
 
         <div className="space-y-3 md:space-y-0 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

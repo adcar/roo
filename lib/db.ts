@@ -180,6 +180,17 @@ export async function getDb() {
       // Column already exists or table doesn't exist yet, ignore
     }
 
+    // Try to add available_equipment column if it doesn't exist (migration)
+    try {
+      const tableInfo = await client.execute(`PRAGMA table_info(user_settings);`);
+      const hasAvailableEquipment = tableInfo.rows.some((row: any) => row.name === 'available_equipment');
+      if (!hasAvailableEquipment) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN available_equipment TEXT;`);
+      }
+    } catch (e) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
     // Initialize nutrition tables
     await client.execute(`
       CREATE TABLE IF NOT EXISTS products (
