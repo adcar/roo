@@ -20,6 +20,9 @@ export async function GET() {
         weekMapping: 'oddA',
         inspirationQuote: null,
         availableEquipment: null,
+        weight: null,
+        height: null,
+        bodyfatPercentage: null,
       });
     }
 
@@ -31,6 +34,9 @@ export async function GET() {
       weekMapping: settings[0].weekMapping,
       inspirationQuote: settings[0].inspirationQuote || null,
       availableEquipment,
+      weight: settings[0].weight || null,
+      height: settings[0].height || null,
+      bodyfatPercentage: settings[0].bodyfatPercentage || null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -45,7 +51,7 @@ export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
     const body = await request.json();
-    const { weekMapping, inspirationQuote, availableEquipment } = body;
+    const { weekMapping, inspirationQuote, availableEquipment, weight, height, bodyfatPercentage } = body;
 
     const db = await getDb();
     const now = new Date().toISOString();
@@ -80,6 +86,18 @@ export async function PUT(request: Request) {
         : null;
     }
 
+    if (weight !== undefined) {
+      updateData.weight = weight || null;
+    }
+
+    if (height !== undefined) {
+      updateData.height = height || null;
+    }
+
+    if (bodyfatPercentage !== undefined) {
+      updateData.bodyfatPercentage = bodyfatPercentage || null;
+    }
+
     if (existing.length > 0) {
       await db
         .update(schema.userSettings)
@@ -98,6 +116,18 @@ export async function PUT(request: Request) {
         insertData.availableEquipment = availableEquipment && availableEquipment.length > 0
           ? JSON.stringify(availableEquipment)
           : null;
+      }
+
+      if (weight !== undefined) {
+        insertData.weight = weight || null;
+      }
+
+      if (height !== undefined) {
+        insertData.height = height || null;
+      }
+
+      if (bodyfatPercentage !== undefined) {
+        insertData.bodyfatPercentage = bodyfatPercentage || null;
       }
       
       await db.insert(schema.userSettings).values(insertData);
@@ -121,6 +151,15 @@ export async function PUT(request: Request) {
         ? updateData.inspirationQuote 
         : (existing[0]?.inspirationQuote || null),
       availableEquipment: savedAvailableEquipment,
+      weight: updateData.weight !== undefined 
+        ? updateData.weight 
+        : (existing[0]?.weight || null),
+      height: updateData.height !== undefined 
+        ? updateData.height 
+        : (existing[0]?.height || null),
+      bodyfatPercentage: updateData.bodyfatPercentage !== undefined 
+        ? updateData.bodyfatPercentage 
+        : (existing[0]?.bodyfatPercentage || null),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

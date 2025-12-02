@@ -117,6 +117,17 @@ export async function getDb() {
       // Column already exists or table doesn't exist yet, ignore
     }
 
+    // Try to add duration_weeks column if it doesn't exist (migration)
+    try {
+      const tableInfo = await client.execute(`PRAGMA table_info(programs);`);
+      const hasDurationWeeks = tableInfo.rows.some((row: any) => row.name === 'duration_weeks');
+      if (!hasDurationWeeks) {
+        await client.execute(`ALTER TABLE programs ADD COLUMN duration_weeks INTEGER;`);
+      }
+    } catch (e) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
     await client.execute(`
       CREATE TABLE IF NOT EXISTS workout_logs (
         id TEXT PRIMARY KEY,
@@ -186,6 +197,26 @@ export async function getDb() {
       const hasAvailableEquipment = tableInfo.rows.some((row: any) => row.name === 'available_equipment');
       if (!hasAvailableEquipment) {
         await client.execute(`ALTER TABLE user_settings ADD COLUMN available_equipment TEXT;`);
+      }
+    } catch (e) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
+    // Try to add weight, height, bodyfat_percentage columns if they don't exist (migration)
+    try {
+      const tableInfo = await client.execute(`PRAGMA table_info(user_settings);`);
+      const hasWeight = tableInfo.rows.some((row: any) => row.name === 'weight');
+      const hasHeight = tableInfo.rows.some((row: any) => row.name === 'height');
+      const hasBodyfat = tableInfo.rows.some((row: any) => row.name === 'bodyfat_percentage');
+      
+      if (!hasWeight) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN weight TEXT;`);
+      }
+      if (!hasHeight) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN height TEXT;`);
+      }
+      if (!hasBodyfat) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN bodyfat_percentage TEXT;`);
       }
     } catch (e) {
       // Column already exists or table doesn't exist yet, ignore

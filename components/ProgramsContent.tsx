@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Play, Settings, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Settings, Eye, Sparkles } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
 
 type WeekMapping = 'oddA' | 'oddB';
@@ -185,6 +185,12 @@ export function ProgramsContent({
               </Button>
             </div>
           )}
+          <Link href="/programs/ai/new">
+            <Button variant="outline">
+              <Sparkles className="mr-2 h-4 w-4" />
+              AI Generate
+            </Button>
+          </Link>
           <Link href="/programs/new">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -198,12 +204,20 @@ export function ProgramsContent({
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <p className="text-muted-foreground text-lg mb-4">No programs created yet</p>
-            <Link href="/programs/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Your First Program
-              </Button>
-            </Link>
+            <div className="flex gap-3">
+              <Link href="/programs/ai/new">
+                <Button variant="outline">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  AI Generate Program
+                </Button>
+              </Link>
+              <Link href="/programs/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Your First Program
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       ) : (

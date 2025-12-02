@@ -34,6 +34,9 @@ export default function SettingsPage() {
   const [weekMapping, setWeekMapping] = useState<string>('oddA');
   const [inspirationQuote, setInspirationQuote] = useState<string>('');
   const [availableEquipment, setAvailableEquipment] = useState<string[]>([]);
+  const [weight, setWeight] = useState<string>('');
+  const [height, setHeight] = useState<string>('');
+  const [bodyfatPercentage, setBodyfatPercentage] = useState<string>('');
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [longestStreak, setLongestStreak] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -58,6 +61,9 @@ export default function SettingsPage() {
         setWeekMapping(settingsData.weekMapping || 'oddA');
         setInspirationQuote(settingsData.inspirationQuote || '');
         setAvailableEquipment(settingsData.availableEquipment || []);
+        setWeight(settingsData.weight || '');
+        setHeight(settingsData.height || '');
+        setBodyfatPercentage(settingsData.bodyfatPercentage || '');
         
         if (streaksResponse && streaksResponse.ok) {
           const streaksData = await streaksResponse.json();
@@ -92,6 +98,9 @@ export default function SettingsPage() {
           weekMapping,
           inspirationQuote: inspirationQuote.trim() || null,
           availableEquipment,
+          weight: weight.trim() || null,
+          height: height.trim() || null,
+          bodyfatPercentage: bodyfatPercentage.trim() || null,
         }),
       });
 
@@ -249,6 +258,52 @@ export default function SettingsPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>
+                Your physical stats help AI generate personalized workout programs (optional)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Weight</Label>
+                  <Input
+                    id="weight"
+                    type="text"
+                    placeholder="e.g., 75 kg or 165 lbs"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="height">Height</Label>
+                  <Input
+                    id="height"
+                    type="text"
+                    placeholder="e.g., 180 cm or 5'11\""
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bodyfatPercentage">Body Fat %</Label>
+                  <Input
+                    id="bodyfatPercentage"
+                    type="text"
+                    placeholder="e.g., 15%"
+                    value={bodyfatPercentage}
+                    onChange={(e) => setBodyfatPercentage(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                These values are optional and used to help AI generate more personalized workout programs.
+              </p>
             </CardContent>
           </Card>
 

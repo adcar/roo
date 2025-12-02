@@ -53,6 +53,9 @@ export const userSettings = sqliteTable('user_settings', {
   weekMapping: text('week_mapping').notNull().default('oddA'), // 'oddA' or 'oddB'
   inspirationQuote: text('inspiration_quote'), // Optional inspiration quote for leaderboard
   availableEquipment: text('available_equipment'), // JSON string array of available equipment
+  weight: text('weight'), // Weight in kg or lbs (stored as string to allow units)
+  height: text('height'), // Height in cm or inches (stored as string to allow units)
+  bodyfatPercentage: text('bodyfat_percentage'), // Body fat percentage (optional)
   updatedAt: text('updated_at').notNull(),
 });
 
