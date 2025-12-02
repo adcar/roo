@@ -251,22 +251,33 @@ export function ProgramsContent({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex-1">
-                        <div className="font-semibold text-sm">{day.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="font-semibold text-sm mb-1.5">{day.name}</div>
+                        <div className="flex items-center gap-2">
                           {program.isSplit !== false ? (
-                            <span className="flex items-center gap-1.5">
-                              <span className={selectedWeek === 'A' ? 'font-semibold text-primary' : ''}>
-                                Week A: {day.weekA.length}
-                                {selectedWeek === 'A' && <span className="ml-1">●</span>}
-                              </span>
-                              <span>•</span>
-                              <span className={selectedWeek === 'B' ? 'font-semibold text-primary' : ''}>
-                                Week B: {day.weekB.length}
-                                {selectedWeek === 'B' && <span className="ml-1">●</span>}
-                              </span>
-                            </span>
+                            <>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
+                                selectedWeek === 'A' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                <span className="font-semibold">A</span>
+                                <span className="opacity-70">·</span>
+                                <span className="font-normal">{day.weekA.length} exercise{day.weekA.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
+                                selectedWeek === 'B' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                <span className="font-semibold">B</span>
+                                <span className="opacity-70">·</span>
+                                <span className="font-normal">{day.weekB.length} exercise{day.weekB.length !== 1 ? 's' : ''}</span>
+                              </div>
+                            </>
                           ) : (
-                            `${day.weekA.length} exercise${day.weekA.length !== 1 ? 's' : ''}`
+                            <span className="text-xs text-muted-foreground">
+                              {day.weekA.length} exercise{day.weekA.length !== 1 ? 's' : ''}
+                            </span>
                           )}
                         </div>
                       </div>
