@@ -23,6 +23,7 @@ export async function GET() {
         weight: null,
         height: null,
         bodyfatPercentage: null,
+        gender: null,
       });
     }
 
@@ -37,6 +38,7 @@ export async function GET() {
       weight: settings[0].weight || null,
       height: settings[0].height || null,
       bodyfatPercentage: settings[0].bodyfatPercentage || null,
+      gender: settings[0].gender !== null && settings[0].gender !== undefined ? settings[0].gender : null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -51,7 +53,7 @@ export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
     const body = await request.json();
-    const { weekMapping, inspirationQuote, availableEquipment, weight, height, bodyfatPercentage } = body;
+    const { weekMapping, inspirationQuote, availableEquipment, weight, height, bodyfatPercentage, gender } = body;
 
     const db = await getDb();
     const now = new Date().toISOString();
@@ -98,6 +100,11 @@ export async function PUT(request: Request) {
       updateData.bodyfatPercentage = bodyfatPercentage || null;
     }
 
+    if (gender !== undefined) {
+      // Store as 0 (female), 1 (male), or null (not specified)
+      updateData.gender = gender === null || gender === '' ? null : (gender === 'male' || gender === 1 ? 1 : 0);
+    }
+
     if (existing.length > 0) {
       await db
         .update(schema.userSettings)
@@ -128,6 +135,10 @@ export async function PUT(request: Request) {
 
       if (bodyfatPercentage !== undefined) {
         insertData.bodyfatPercentage = bodyfatPercentage || null;
+      }
+
+      if (gender !== undefined) {
+        insertData.gender = gender === null || gender === '' ? null : (gender === 'male' || gender === 1 ? 1 : 0);
       }
       
       await db.insert(schema.userSettings).values(insertData);
@@ -160,6 +171,9 @@ export async function PUT(request: Request) {
       bodyfatPercentage: updateData.bodyfatPercentage !== undefined 
         ? updateData.bodyfatPercentage 
         : (existing[0]?.bodyfatPercentage || null),
+      gender: updateData.gender !== undefined 
+        ? updateData.gender 
+        : (existing[0]?.gender !== null && existing[0]?.gender !== undefined ? existing[0].gender : null),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

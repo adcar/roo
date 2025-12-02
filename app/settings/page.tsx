@@ -34,9 +34,11 @@ export default function SettingsPage() {
   const [weekMapping, setWeekMapping] = useState<string>('oddA');
   const [inspirationQuote, setInspirationQuote] = useState<string>('');
   const [availableEquipment, setAvailableEquipment] = useState<string[]>([]);
-  const [weight, setWeight] = useState<string>('');
-  const [height, setHeight] = useState<string>('');
-  const [bodyfatPercentage, setBodyfatPercentage] = useState<string>('');
+  const [weight, setWeight] = useState<number | ''>('');
+  const [heightFeet, setHeightFeet] = useState<number | ''>('');
+  const [heightInches, setHeightInches] = useState<number | ''>('');
+  const [bodyfatPercentage, setBodyfatPercentage] = useState<number | ''>('');
+  const [gender, setGender] = useState<'male' | 'female' | 'none'>('none');
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [longestStreak, setLongestStreak] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -61,9 +63,49 @@ export default function SettingsPage() {
         setWeekMapping(settingsData.weekMapping || 'oddA');
         setInspirationQuote(settingsData.inspirationQuote || '');
         setAvailableEquipment(settingsData.availableEquipment || []);
-        setWeight(settingsData.weight || '');
-        setHeight(settingsData.height || '');
-        setBodyfatPercentage(settingsData.bodyfatPercentage || '');
+        
+        // Parse weight (remove "lbs" suffix)
+        const weightValue = settingsData.weight || '';
+        const weightNum = weightValue.replace(/\s*lbs$/i, '');
+        setWeight(weightNum ? parseFloat(weightNum) : '');
+        
+        // Parse height (format: "5'11"", "5'11", etc.)
+        const heightValue = settingsData.height || '';
+        if (heightValue) {
+          // Match pattern like "5'11" or "5'11\""
+          const match = heightValue.match(/(\d+)['\s](\d+)/);
+          if (match) {
+            setHeightFeet(parseInt(match[1]));
+            setHeightInches(parseInt(match[2]));
+          } else {
+            // Try to find just feet if no inches format found
+            const feetOnly = heightValue.match(/(\d+)/);
+            if (feetOnly) {
+              setHeightFeet(parseInt(feetOnly[1]));
+              setHeightInches('');
+            } else {
+              setHeightFeet('');
+              setHeightInches('');
+            }
+          }
+        } else {
+          setHeightFeet('');
+          setHeightInches('');
+        }
+        
+        // Parse body fat (remove "%" suffix)
+        const bodyfatValue = settingsData.bodyfatPercentage || '';
+        const bodyfatNum = bodyfatValue.replace('%', '');
+        setBodyfatPercentage(bodyfatNum ? parseFloat(bodyfatNum) : '');
+        
+        // Parse gender (0 = female, 1 = male, null = not specified)
+        if (settingsData.gender === 1) {
+          setGender('male');
+        } else if (settingsData.gender === 0) {
+          setGender('female');
+        } else {
+          setGender('none');
+        }
         
         if (streaksResponse && streaksResponse.ok) {
           const streaksData = await streaksResponse.json();
@@ -89,6 +131,15 @@ export default function SettingsPage() {
   async function handleSave() {
     try {
       setSaving(true);
+      
+      // Format values for storage
+      const formattedWeight = weight !== '' ? `${weight} lbs` : null;
+      const formattedHeight = (heightFeet !== '' || heightInches !== '') 
+        ? `${heightFeet || 0}'${heightInches || 0}"`
+        : null;
+      const formattedBodyfat = bodyfatPercentage !== '' ? `${bodyfatPercentage}%` : null;
+      const formattedGender = gender === 'none' ? null : gender;
+
       const response = await fetch('/api/user-settings', {
         method: 'PUT',
         headers: {
@@ -98,9 +149,10 @@ export default function SettingsPage() {
           weekMapping,
           inspirationQuote: inspirationQuote.trim() || null,
           availableEquipment,
-          weight: weight.trim() || null,
-          height: height.trim() || null,
-          bodyfatPercentage: bodyfatPercentage.trim() || null,
+          weight: formattedWeight,
+          height: formattedHeight,
+          bodyfatPercentage: formattedBodyfat,
+          gender: formattedGender,
         }),
       });
 
@@ -271,34 +323,83 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight</Label>
+                  <Label htmlFor="weight">Weight (lbs)</Label>
                   <Input
                     id="weight"
-                    type="text"
-                    placeholder="e.g., 75 kg or 165 lbs"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g., 165"
                     value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                      setWeight(value === '' || isNaN(value) ? '' : value);
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="height">Height</Label>
-                  <Input
-                    id="height"
-                    type="text"
-                    placeholder="e.g., 180 cm or 5'11\""
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Input
+                        id="heightFeet"
+                        type="number"
+                        min="0"
+                        max="8"
+                        placeholder="Feet"
+                        value={heightFeet}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                          setHeightFeet(value === '' || isNaN(value) ? '' : value);
+                        }}
+                      />
+                    </div>
+                    <span className="text-muted-foreground">'</span>
+                    <div className="flex-1">
+                      <Input
+                        id="heightInches"
+                        type="number"
+                        min="0"
+                        max="11"
+                        placeholder="Inches"
+                        value={heightInches}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                          setHeightInches(value === '' || isNaN(value) ? '' : value);
+                        }}
+                      />
+                    </div>
+                    <span className="text-muted-foreground">"</span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bodyfatPercentage">Body Fat %</Label>
                   <Input
                     id="bodyfatPercentage"
-                    type="text"
-                    placeholder="e.g., 15%"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="e.g., 15"
                     value={bodyfatPercentage}
-                    onChange={(e) => setBodyfatPercentage(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                      setBodyfatPercentage(value === '' || isNaN(value) ? '' : value);
+                    }}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select value={gender} onValueChange={(value) => setGender(value as 'male' | 'female' | 'none')}>
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Select gender (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">

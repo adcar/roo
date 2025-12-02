@@ -56,6 +56,7 @@ export const userSettings = sqliteTable('user_settings', {
   weight: text('weight'), // Weight in kg or lbs (stored as string to allow units)
   height: text('height'), // Height in cm or inches (stored as string to allow units)
   bodyfatPercentage: text('bodyfat_percentage'), // Body fat percentage (optional)
+  gender: integer('gender'), // 0 for female, 1 for male, null for not specified
   updatedAt: text('updated_at').notNull(),
 });
 

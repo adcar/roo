@@ -208,6 +208,7 @@ export async function getDb() {
       const hasWeight = tableInfo.rows.some((row: any) => row.name === 'weight');
       const hasHeight = tableInfo.rows.some((row: any) => row.name === 'height');
       const hasBodyfat = tableInfo.rows.some((row: any) => row.name === 'bodyfat_percentage');
+      const hasGender = tableInfo.rows.some((row: any) => row.name === 'gender');
       
       if (!hasWeight) {
         await client.execute(`ALTER TABLE user_settings ADD COLUMN weight TEXT;`);
@@ -217,6 +218,9 @@ export async function getDb() {
       }
       if (!hasBodyfat) {
         await client.execute(`ALTER TABLE user_settings ADD COLUMN bodyfat_percentage TEXT;`);
+      }
+      if (!hasGender) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN gender INTEGER;`);
       }
     } catch (e) {
       // Column already exists or table doesn't exist yet, ignore
