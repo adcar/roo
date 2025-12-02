@@ -163,10 +163,10 @@ export function ProgramsContent({
           <h2 className="text-2xl font-bold">My Programs</h2>
           <p className="text-muted-foreground">{programs.length} program(s) created</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {programs.some(p => p.isSplit === true) && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Week {currentWeekNumber} {selectedWeek}:
               </span>
               <Tabs value={selectedWeek} onValueChange={(value) => setSelectedWeek(value as 'A' | 'B')}>
@@ -185,14 +185,14 @@ export function ProgramsContent({
               </Button>
             </div>
           )}
-          <Link href="/programs/ai/new">
-            <Button variant="outline">
+          <Link href="/programs/ai/new" className="flex-shrink-0">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Sparkles className="mr-2 h-4 w-4" />
               AI Generate
             </Button>
           </Link>
-          <Link href="/programs/new">
-            <Button>
+          <Link href="/programs/new" className="flex-shrink-0">
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Create Program
             </Button>
@@ -202,17 +202,17 @@ export function ProgramsContent({
 
       {programs.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
+          <CardContent className="flex flex-col items-center justify-center py-16 px-4">
             <p className="text-muted-foreground text-lg mb-4">No programs created yet</p>
-            <div className="flex gap-3">
-              <Link href="/programs/ai/new">
-                <Button variant="outline">
+            <div className="flex flex-wrap gap-3 justify-center w-full max-w-md">
+              <Link href="/programs/ai/new" className="flex-1 min-w-[140px]">
+                <Button variant="outline" className="w-full">
                   <Sparkles className="mr-2 h-4 w-4" />
                   AI Generate Program
                 </Button>
               </Link>
-              <Link href="/programs/new">
-                <Button>
+              <Link href="/programs/new" className="flex-1 min-w-[140px]">
+                <Button className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Program
                 </Button>

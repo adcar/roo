@@ -223,7 +223,9 @@ Note: If the program doesn't need Week A/B splits, set weekB to empty arrays and
         send({ type: 'status', content: 'Sending request to AI...' });
 
         // Call OpenAI with streaming
-        const completion = await openai.chat.completions.create({
+        send({ type: 'status', content: 'AI is thinking...' });
+
+        const completionStream = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
             {
@@ -237,11 +239,25 @@ Note: If the program doesn't need Week A/B splits, set weekB to empty arrays and
           ],
           temperature: 0.7,
           response_format: { type: 'json_object' },
+          stream: true,
         });
 
-        send({ type: 'status', content: 'AI is generating your program...' });
-
-        const responseContent = completion.choices[0]?.message?.content;
+        let responseContent = '';
+        let lastUpdateTime = Date.now();
+        
+        for await (const chunk of completionStream) {
+          const delta = chunk.choices[0]?.delta?.content || '';
+          if (delta) {
+            responseContent += delta;
+            
+            // Send progress updates every 500ms to show activity
+            const now = Date.now();
+            if (now - lastUpdateTime > 500) {
+              send({ type: 'status', content: 'AI is generating your program...' });
+              lastUpdateTime = now;
+            }
+          }
+        }
         if (!responseContent) {
           throw new Error('No response from AI');
         }

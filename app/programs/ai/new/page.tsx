@@ -147,14 +147,14 @@ export default function AIGenerateProgramPage() {
 
   if (step === 'generating') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
         <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
+          <CardContent className="p-6">
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <div className="text-center w-full">
                 <h3 className="text-lg font-semibold mb-2">Generating Your Program</h3>
-                <p className="text-muted-foreground min-h-[3rem] flex items-center justify-center">
+                <p className="text-muted-foreground min-h-[2.5rem] flex items-center justify-center px-2">
                   {statusMessage}
                 </p>
                 <div className="mt-4 w-full bg-muted rounded-full h-2 overflow-hidden">
