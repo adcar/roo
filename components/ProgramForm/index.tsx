@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Plus, Save, Hourglass } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import DayTabs from './DayTabs';
@@ -26,6 +27,12 @@ export default function ProgramForm({
   const [programName, setProgramName] = useState(initialProgram?.name || '');
   const [days, setDays] = useState<WorkoutDay[]>(initialProgram?.days || []);
   const [isSplit, setIsSplit] = useState(initialProgram?.isSplit !== false); // Default to true for backward compatibility
+  // Default to undefined (unlimited) if not set or null
+  const [durationWeeks, setDurationWeeks] = useState<number | undefined>(
+    initialProgram?.durationWeeks !== null && initialProgram?.durationWeeks !== undefined 
+      ? initialProgram.durationWeeks 
+      : undefined
+  );
   const [activeTab, setActiveTab] = useState<string>('');
   const [newDayName, setNewDayName] = useState('');
   const [editingDay, setEditingDay] = useState<string | null>(null);
@@ -45,6 +52,25 @@ export default function ProgramForm({
     }
   }, [days, activeTab]);
 
+  // Sync durationWeeks when initialProgram changes (for async loading)
+  useEffect(() => {
+    if (initialProgram) {
+      // Always default to undefined (unlimited) if durationWeeks is null, undefined, 0, or invalid
+      const duration = initialProgram.durationWeeks;
+      const newDurationWeeks = (duration !== null && 
+                               duration !== undefined && 
+                               typeof duration === 'number' &&
+                               duration > 0)
+        ? duration 
+        : undefined;
+      
+      setDurationWeeks(newDurationWeeks);
+    } else {
+      // If no initial program, default to unlimited
+      setDurationWeeks(undefined);
+    }
+  }, [initialProgram]);
+
   // Auto-save function (only for editing existing programs)
   const performAutoSave = useCallback(async () => {
     if (!isEditing || !initialProgram?.id || !programName.trim() || days.length === 0) {
@@ -53,7 +79,7 @@ export default function ProgramForm({
 
     setAutoSaving(true);
     try {
-      await onSave({ name: programName, days, isSplit });
+      await onSave({ name: programName, days, isSplit, durationWeeks });
       setLastSaved(new Date());
     } catch (error) {
       console.error('Error auto-saving program:', error);
@@ -61,7 +87,7 @@ export default function ProgramForm({
     } finally {
       setAutoSaving(false);
     }
-  }, [isEditing, initialProgram?.id, programName, days, isSplit, onSave]);
+  }, [isEditing, initialProgram?.id, programName, days, isSplit, durationWeeks, onSave]);
 
   // Debounced auto-save effect
   useEffect(() => {
@@ -83,7 +109,7 @@ export default function ProgramForm({
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [programName, days, isSplit, isEditing, performAutoSave]);
+  }, [programName, days, isSplit, durationWeeks, isEditing, performAutoSave]);
 
   const addDay = (name?: string) => {
     const dayName = name || newDayName;
@@ -292,7 +318,7 @@ export default function ProgramForm({
 
     setSaving(true);
     try {
-      await onSave({ name: programName, days, isSplit });
+      await onSave({ name: programName, days, isSplit, durationWeeks });
       toast('Program saved successfully', { variant: 'success' });
     } catch (error) {
       console.error('Error saving program:', error);
@@ -348,7 +374,7 @@ export default function ProgramForm({
           <CardHeader>
             <CardTitle>Program Settings</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -361,11 +387,53 @@ export default function ProgramForm({
                 Split Program (Alternate between Week A and Week B)
               </label>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground">
               {isSplit 
                 ? 'This program alternates between two different workout weeks (A and B).'
                 : 'This program uses the same exercises every week (no alternation).'}
             </p>
+            
+            <div className="space-y-2">
+              <label htmlFor="duration" className="text-sm font-medium">
+                Program Duration <span className="text-muted-foreground">(required)</span>
+              </label>
+              <Select
+                value={
+                  durationWeeks === undefined || 
+                  durationWeeks === null || 
+                  !durationWeeks || 
+                  durationWeeks <= 0
+                    ? 'unlimited' 
+                    : durationWeeks.toString()
+                }
+                onValueChange={(value) => {
+                  setDurationWeeks(value === 'unlimited' ? undefined : parseInt(value, 10));
+                }}
+                defaultValue="unlimited"
+              >
+                <SelectTrigger id="duration" className="w-full">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlimited">Unlimited</SelectItem>
+                  <SelectItem value="4">4 weeks</SelectItem>
+                  <SelectItem value="6">6 weeks</SelectItem>
+                  <SelectItem value="8">8 weeks</SelectItem>
+                  <SelectItem value="12">12 weeks</SelectItem>
+                  <SelectItem value="16">16 weeks</SelectItem>
+                  <SelectItem value="20">20 weeks</SelectItem>
+                  <SelectItem value="24">24 weeks</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {durationWeeks === undefined || 
+                 durationWeeks === null || 
+                 !durationWeeks || 
+                 durationWeeks <= 0
+                  ? 'This program has no set duration and can be used indefinitely.'
+                  : `This program is designed to last ${durationWeeks} weeks.`}
+              </p>
+            </div>
           </CardContent>
         </Card>
 

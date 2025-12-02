@@ -27,6 +27,7 @@ export async function getPrograms(): Promise<Program[]> {
         ...p,
         days: normalizeExerciseOrder(days),
         isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined,
+        durationWeeks: p.durationWeeks !== null ? p.durationWeeks : undefined,
       };
     });
 

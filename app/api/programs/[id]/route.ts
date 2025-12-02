@@ -36,6 +36,7 @@ export async function GET(
       ...program,
       days: normalizeExerciseOrder(days),
       isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined, // Convert integer to boolean, undefined if null
+      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined, // Convert integer to number, undefined if null
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -73,6 +74,7 @@ export async function PUT(
       name: body.name,
       days: JSON.stringify(body.days),
       isSplit: body.isSplit !== undefined ? (body.isSplit ? 1 : 0) : null,
+      durationWeeks: body.durationWeeks !== undefined ? body.durationWeeks : null,
       updatedAt: new Date().toISOString(),
     };
 
@@ -89,6 +91,7 @@ export async function PUT(
       ...program,
       days: JSON.parse(program.days),
       isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined,
+      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

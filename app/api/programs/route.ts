@@ -26,6 +26,7 @@ export async function GET() {
         ...p,
         days: normalizeExerciseOrder(days),
         isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined, // Convert integer to boolean, undefined if null
+        durationWeeks: p.durationWeeks !== null ? p.durationWeeks : undefined, // Convert integer to number, undefined if null
       };
     });
 
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
       name: body.name,
       days: JSON.stringify(body.days),
       isSplit: body.isSplit !== undefined ? (body.isSplit ? 1 : 0) : null,
+      durationWeeks: body.durationWeeks !== undefined ? body.durationWeeks : null,
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       userId,
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       ...program,
       days: JSON.parse(program.days),
       isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined,
+      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
