@@ -202,13 +202,14 @@ export async function getDb() {
       // Column already exists or table doesn't exist yet, ignore
     }
 
-    // Try to add weight, height, bodyfat_percentage columns if they don't exist (migration)
+    // Try to add weight, height, bodyfat_percentage, gender, age columns if they don't exist (migration)
     try {
       const tableInfo = await client.execute(`PRAGMA table_info(user_settings);`);
       const hasWeight = tableInfo.rows.some((row: any) => row.name === 'weight');
       const hasHeight = tableInfo.rows.some((row: any) => row.name === 'height');
       const hasBodyfat = tableInfo.rows.some((row: any) => row.name === 'bodyfat_percentage');
       const hasGender = tableInfo.rows.some((row: any) => row.name === 'gender');
+      const hasAge = tableInfo.rows.some((row: any) => row.name === 'age');
       
       if (!hasWeight) {
         await client.execute(`ALTER TABLE user_settings ADD COLUMN weight TEXT;`);
@@ -221,6 +222,9 @@ export async function getDb() {
       }
       if (!hasGender) {
         await client.execute(`ALTER TABLE user_settings ADD COLUMN gender INTEGER;`);
+      }
+      if (!hasAge) {
+        await client.execute(`ALTER TABLE user_settings ADD COLUMN age INTEGER;`);
       }
     } catch (e) {
       // Column already exists or table doesn't exist yet, ignore

@@ -24,6 +24,7 @@ export async function GET() {
         height: null,
         bodyfatPercentage: null,
         gender: null,
+        age: null,
       });
     }
 
@@ -39,6 +40,7 @@ export async function GET() {
       height: settings[0].height || null,
       bodyfatPercentage: settings[0].bodyfatPercentage || null,
       gender: settings[0].gender !== null && settings[0].gender !== undefined ? settings[0].gender : null,
+      age: settings[0].age !== null && settings[0].age !== undefined ? settings[0].age : null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
@@ -53,7 +55,7 @@ export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
     const body = await request.json();
-    const { weekMapping, inspirationQuote, availableEquipment, weight, height, bodyfatPercentage, gender } = body;
+    const { weekMapping, inspirationQuote, availableEquipment, weight, height, bodyfatPercentage, gender, age } = body;
 
     const db = await getDb();
     const now = new Date().toISOString();
@@ -105,6 +107,10 @@ export async function PUT(request: Request) {
       updateData.gender = gender === null || gender === '' ? null : (gender === 'male' || gender === 1 ? 1 : 0);
     }
 
+    if (age !== undefined) {
+      updateData.age = age === null || age === '' ? null : parseInt(age);
+    }
+
     if (existing.length > 0) {
       await db
         .update(schema.userSettings)
@@ -140,6 +146,10 @@ export async function PUT(request: Request) {
       if (gender !== undefined) {
         insertData.gender = gender === null || gender === '' ? null : (gender === 'male' || gender === 1 ? 1 : 0);
       }
+
+      if (age !== undefined) {
+        insertData.age = age === null || age === '' ? null : parseInt(age);
+      }
       
       await db.insert(schema.userSettings).values(insertData);
     }
@@ -174,6 +184,9 @@ export async function PUT(request: Request) {
       gender: updateData.gender !== undefined 
         ? updateData.gender 
         : (existing[0]?.gender !== null && existing[0]?.gender !== undefined ? existing[0].gender : null),
+      age: updateData.age !== undefined 
+        ? updateData.age 
+        : (existing[0]?.age !== null && existing[0]?.age !== undefined ? existing[0].age : null),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

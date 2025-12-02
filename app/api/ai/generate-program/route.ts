@@ -131,6 +131,9 @@ export async function POST(request: Request) {
         if (settings.gender !== null && settings.gender !== undefined) {
           userContext.push(`Gender: ${settings.gender === 1 ? 'Male' : 'Female'}`);
         }
+        if (settings.age !== null && settings.age !== undefined) {
+          userContext.push(`Age: ${settings.age} years`);
+        }
         if (settings.weight) userContext.push(`Weight: ${settings.weight}`);
         if (settings.height) userContext.push(`Height: ${settings.height}`);
         if (settings.bodyfatPercentage) userContext.push(`Body Fat: ${settings.bodyfatPercentage}`);

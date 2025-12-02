@@ -39,6 +39,7 @@ export default function SettingsPage() {
   const [heightInches, setHeightInches] = useState<number | ''>('');
   const [bodyfatPercentage, setBodyfatPercentage] = useState<number | ''>('');
   const [gender, setGender] = useState<'male' | 'female' | 'none'>('none');
+  const [age, setAge] = useState<number | ''>('');
   const [currentStreak, setCurrentStreak] = useState<number>(0);
   const [longestStreak, setLongestStreak] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -107,6 +108,9 @@ export default function SettingsPage() {
           setGender('none');
         }
         
+        // Parse age
+        setAge(settingsData.age !== null && settingsData.age !== undefined ? settingsData.age : '');
+        
         if (streaksResponse && streaksResponse.ok) {
           const streaksData = await streaksResponse.json();
           setCurrentStreak(streaksData.currentStreak || 0);
@@ -139,6 +143,7 @@ export default function SettingsPage() {
         : null;
       const formattedBodyfat = bodyfatPercentage !== '' ? `${bodyfatPercentage}%` : null;
       const formattedGender = gender === 'none' ? null : gender;
+      const formattedAge = age !== '' && !isNaN(age as number) ? age : null;
 
       const response = await fetch('/api/user-settings', {
         method: 'PUT',
@@ -153,6 +158,7 @@ export default function SettingsPage() {
           height: formattedHeight,
           bodyfatPercentage: formattedBodyfat,
           gender: formattedGender,
+          age: formattedAge,
         }),
       });
 
@@ -321,7 +327,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="weight">Weight (lbs)</Label>
                   <Input
@@ -400,6 +406,21 @@ export default function SettingsPage() {
                       <SelectItem value="female">Female</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    min="1"
+                    max="150"
+                    placeholder="e.g., 30"
+                    value={age}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                      setAge(value === '' || isNaN(value) ? '' : value);
+                    }}
+                  />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
