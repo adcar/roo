@@ -7,17 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit2, Trash2 } from 'lucide-react';
+import { HighlightedText } from '@/components/HighlightedText';
 
 export const ExerciseCard = memo(function ExerciseCard({ 
   exercise, 
   onClick,
   onEdit,
   onDelete,
+  searchQuery = '',
 }: { 
   exercise: Exercise & { isCustom?: boolean }; 
   onClick: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  searchQuery?: string;
 }) {
   const isCustom = exercise.isCustom;
   
@@ -82,7 +85,9 @@ export const ExerciseCard = memo(function ExerciseCard({
         )}
       </CardHeader>
       <CardContent className="p-3">
-        <CardTitle className="text-sm mb-2 line-clamp-2">{exercise.name}</CardTitle>
+        <CardTitle className="text-sm mb-2 line-clamp-2">
+          <HighlightedText text={exercise.name} query={searchQuery} />
+        </CardTitle>
         <div className="flex flex-wrap gap-1 mb-2">
           {exercise.primaryMuscles.slice(0, 2).map(muscle => (
             <Badge key={muscle} variant="secondary" className="text-xs">{muscle}</Badge>

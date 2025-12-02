@@ -137,6 +137,7 @@ export default function ExercisesTab() {
             exercisesPerPage={exercisesPerPage}
             onPageChange={setCurrentPage}
             onExerciseClick={setSelectedExercise}
+            searchQuery={search}
           />
         </TabsContent>
 
@@ -174,6 +175,7 @@ export default function ExercisesTab() {
               }}
               onDeleteClick={handleDeleteClick}
               showActions={true}
+              searchQuery={search}
             />
           )}
         </TabsContent>

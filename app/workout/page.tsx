@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
 
@@ -35,6 +35,7 @@ function WorkoutContent() {
   const [isFinishing, setIsFinishing] = useState(false);
   const [showMobileImages, setShowMobileImages] = useState(false);
   const [showMusclesWorked, setShowMusclesWorked] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -557,6 +558,7 @@ function WorkoutContent() {
       setCurrentExerciseIndex(currentExerciseIndex + 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
+      setShowInstructions(false); // Reset instructions visibility when changing exercises
     }
   };
 
@@ -567,6 +569,7 @@ function WorkoutContent() {
       setCurrentExerciseIndex(currentExerciseIndex - 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
+      setShowInstructions(false); // Reset instructions visibility when changing exercises
     }
   };
 
@@ -924,6 +927,74 @@ function WorkoutContent() {
                             </div>
                           ))}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Instructions - Desktop: Always visible (2xl and above) */}
+                  {currentExercise.instructions && currentExercise.instructions.length > 0 && (
+                    <div className="hidden 2xl:block mt-4">
+                      <h3 className="font-semibold mb-3">Instructions</h3>
+                      <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                        {currentExercise.instructions.map((instruction, idx) => (
+                          <li key={idx}>{instruction}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Instructions - Desktop dropdown (md to 2xl) */}
+                  {currentExercise.instructions && currentExercise.instructions.length > 0 && (
+                    <div className="hidden md:block 2xl:hidden mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowInstructions(!showInstructions)}
+                        className="w-full justify-between mb-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          <span>Instructions ({currentExercise.instructions.length})</span>
+                        </div>
+                        {showInstructions ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {showInstructions && (
+                        <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                          {currentExercise.instructions.map((instruction, idx) => (
+                            <li key={idx}>{instruction}</li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Instructions - Mobile dropdown */}
+                  {currentExercise.instructions && currentExercise.instructions.length > 0 && (
+                    <div className="md:hidden mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowInstructions(!showInstructions)}
+                        className="w-full justify-between mb-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          <span>Instructions ({currentExercise.instructions.length})</span>
+                        </div>
+                        {showInstructions ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {showInstructions && (
+                        <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                          {currentExercise.instructions.map((instruction, idx) => (
+                            <li key={idx}>{instruction}</li>
+                          ))}
+                        </ol>
                       )}
                     </div>
                   )}

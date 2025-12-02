@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ALL_MUSCLE_OPTIONS } from '@/components/ExercisesTab/utils';
 import { Plus, Info } from 'lucide-react';
+import { HighlightedText } from '@/components/HighlightedText';
 
 // Lazy load CreateExerciseDialog
 const CreateExerciseDialog = lazy(() => import('@/components/ExercisesTab/CreateExerciseDialog').then(module => ({ default: module.CreateExerciseDialog })));
@@ -143,7 +144,9 @@ export default function ExerciseSelector({ exercises, open = true, onSelect, onC
                       />
                     </div>
                   )}
-                  <h3 className="font-semibold mb-2">{exercise.name}</h3>
+                  <h3 className="font-semibold mb-2">
+                    <HighlightedText text={exercise.name} query={search} />
+                  </h3>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {exercise.primaryMuscles.slice(0, 3).map(muscle => (
                       <Badge key={muscle} variant="secondary" className="text-xs">{muscle}</Badge>

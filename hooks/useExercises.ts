@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Exercise } from '@/types/exercise';
+import { exerciseMatchesSearch } from '@/utils/searchUtils';
 
 export function useExercises() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -51,11 +52,9 @@ export function filterExercises(
   if (!filters.search && !filters.primaryMuscle && !filters.equipment && !filters.level && !filters.category) {
     return exercises;
   }
-
-  const searchLower = filters.search?.toLowerCase();
   
   return exercises.filter(exercise => {
-    if (searchLower && !exercise.name.toLowerCase().includes(searchLower)) {
+    if (filters.search && !exerciseMatchesSearch(exercise.name, filters.search)) {
       return false;
     }
     if (filters.primaryMuscle && !exercise.primaryMuscles.includes(filters.primaryMuscle)) {

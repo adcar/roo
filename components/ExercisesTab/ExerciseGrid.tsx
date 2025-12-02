@@ -13,6 +13,7 @@ interface ExerciseGridProps {
   onEditClick?: (exercise: Exercise) => void;
   onDeleteClick?: (exerciseId: string) => void;
   showActions?: boolean;
+  searchQuery?: string;
 }
 
 export function ExerciseGrid({
@@ -24,6 +25,7 @@ export function ExerciseGrid({
   onEditClick,
   onDeleteClick,
   showActions = false,
+  searchQuery = '',
 }: ExerciseGridProps) {
   const totalPages = Math.ceil(exercises.length / exercisesPerPage);
   const startIndex = (currentPage - 1) * exercisesPerPage;
@@ -39,6 +41,7 @@ export function ExerciseGrid({
             onClick={() => onExerciseClick(exercise)}
             onEdit={showActions && exercise.isCustom && onEditClick ? () => onEditClick(exercise) : undefined}
             onDelete={showActions && exercise.isCustom && onDeleteClick && exercise.id ? () => onDeleteClick(exercise.id) : undefined}
+            searchQuery={searchQuery}
           />
         ))}
       </div>
