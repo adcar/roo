@@ -73,6 +73,60 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const userId = await getUserId();
+    const body = await request.json();
+    const db = await getDb();
+
+    if (!body.id) {
+      return NextResponse.json({ error: 'Workout log ID is required' }, { status: 400 });
+    }
+
+    // Verify the workout log belongs to the user
+    const [existingLog] = await db
+      .select()
+      .from(schema.workoutLogs)
+      .where(and(
+        eq(schema.workoutLogs.id, body.id),
+        eq(schema.workoutLogs.userId, userId)
+      ) as any);
+
+    if (!existingLog) {
+      return NextResponse.json({ error: 'Workout log not found' }, { status: 404 });
+    }
+
+    // Update the workout log
+    const updatedLog = {
+      programId: body.programId || existingLog.programId,
+      dayId: body.dayId || existingLog.dayId,
+      week: body.week || existingLog.week,
+      date: body.date || existingLog.date,
+      exercises: JSON.stringify(body.exercises || JSON.parse(existingLog.exercises)),
+    };
+
+    await db
+      .update(schema.workoutLogs)
+      .set(updatedLog)
+      .where(and(
+        eq(schema.workoutLogs.id, body.id),
+        eq(schema.workoutLogs.userId, userId)
+      ) as any);
+
+    return NextResponse.json({
+      id: body.id,
+      ...updatedLog,
+      exercises: JSON.parse(updatedLog.exercises),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('Error updating workout log:', error);
+    return NextResponse.json({ error: 'Failed to update workout log' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const userId = await getUserId();

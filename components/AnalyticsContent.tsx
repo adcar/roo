@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { WorkoutLog, ExerciseLog, Program } from '@/types/exercise';
+import { WorkoutLog, ExerciseLog, Program, SetLog } from '@/types/exercise';
 import { useExercises } from '@/hooks/useExercises';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { Trash2, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Trash2, X, Edit2, Save, Check, Loader2, Circle } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WorkoutCalendar } from '@/components/WorkoutCalendar';
@@ -63,6 +64,9 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'overview' | 'exercise' | 'calendar' | 'history' | 'weekProgress'>('overview');
   const [selectedWorkoutLog, setSelectedWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [editingWorkoutLog, setEditingWorkoutLog] = useState<WorkoutLog | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -696,39 +700,122 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
         </Tabs>
 
         {/* Workout Detail Dialog */}
-        <Dialog open={!!selectedWorkoutLog} onOpenChange={(open) => !open && setSelectedWorkoutLog(null)}>
+        <Dialog open={!!selectedWorkoutLog} onOpenChange={(open) => {
+          if (!open) {
+            setSelectedWorkoutLog(null);
+            setIsEditing(false);
+            setEditingWorkoutLog(null);
+          }
+        }}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             {selectedWorkoutLog && (() => {
               const program = programs.find(p => p.id === selectedWorkoutLog.programId);
               const programName = program?.name || `Program ${selectedWorkoutLog.programId.slice(-6)}`;
               const date = new Date(selectedWorkoutLog.date);
+              const workoutLogToDisplay = isEditing && editingWorkoutLog ? editingWorkoutLog : selectedWorkoutLog;
+              
+              const handleEdit = () => {
+                setEditingWorkoutLog(JSON.parse(JSON.stringify(selectedWorkoutLog))); // Deep copy
+                setIsEditing(true);
+              };
+
+              const handleCancel = () => {
+                setIsEditing(false);
+                setEditingWorkoutLog(null);
+              };
+
+              const handleSave = async () => {
+                if (!editingWorkoutLog || !editingWorkoutLog.id) return;
+                
+                setIsSaving(true);
+                try {
+                  const response = await fetch('/api/workout-logs', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(editingWorkoutLog),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to update workout');
+                  }
+
+                  const updatedLog = await response.json();
+                  setWorkoutLogs(prev => prev.map(log => log.id === updatedLog.id ? updatedLog : log));
+                  setSelectedWorkoutLog(updatedLog);
+                  setIsEditing(false);
+                  setEditingWorkoutLog(null);
+                  toast('Workout updated successfully!', { variant: 'success' });
+                } catch (error) {
+                  console.error('Error updating workout:', error);
+                  toast('Failed to update workout', { variant: 'destructive' });
+                } finally {
+                  setIsSaving(false);
+                }
+              };
+
+              const updateSet = (exerciseIdx: number, setIdx: number, updates: Partial<SetLog>) => {
+                if (!editingWorkoutLog) return;
+                const newLog = JSON.parse(JSON.stringify(editingWorkoutLog));
+                newLog.exercises[exerciseIdx].sets[setIdx] = {
+                  ...newLog.exercises[exerciseIdx].sets[setIdx],
+                  ...updates,
+                };
+                setEditingWorkoutLog(newLog);
+              };
               
               return (
                 <>
                   <DialogHeader>
-                    <DialogTitle>
-                      {date.toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </DialogTitle>
+                    <div className="flex items-center justify-between">
+                      <DialogTitle>
+                        {date.toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </DialogTitle>
+                      {!isEditing ? (
+                        <Button variant="outline" size="sm" onClick={handleEdit}>
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Save
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div className="flex gap-2 flex-wrap">
                       <Badge variant="secondary">{programName}</Badge>
-                      <Badge variant="secondary">Week {selectedWorkoutLog.week}</Badge>
+                      <Badge variant="secondary">Week {workoutLogToDisplay.week}</Badge>
                       <Badge variant="secondary">
-                        {selectedWorkoutLog.exercises.length} exercise{selectedWorkoutLog.exercises.length !== 1 ? 's' : ''}
+                        {workoutLogToDisplay.exercises.length} exercise{workoutLogToDisplay.exercises.length !== 1 ? 's' : ''}
                       </Badge>
                     </div>
                     
                     <div className="space-y-4">
-                      {selectedWorkoutLog.exercises.map((exerciseLog, idx) => {
+                      {workoutLogToDisplay.exercises.map((exerciseLog, idx) => {
                         const exercise = exercises.find(ex => ex.id === exerciseLog.exerciseId);
                         const exerciseName = exercise?.name || exerciseLog.exerciseId;
-                        const completedSets = exerciseLog.sets.filter(s => s.completed);
+                        const setsToShow = isEditing ? exerciseLog.sets : exerciseLog.sets.filter(s => s.completed);
                         const isCardio = exercise?.category === 'cardio';
                         
                         return (
@@ -738,40 +825,97 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                             </CardHeader>
                             <CardContent>
                               <div className="space-y-2">
-                                {completedSets.length > 0 ? (
-                                  completedSets.map((set, setIdx) => (
-                                    <div key={setIdx} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                                {setsToShow.length > 0 ? (
+                                  setsToShow.map((set, setIdx) => (
+                                    <div key={setIdx} className={`flex items-center gap-3 p-2 rounded-lg ${set.completed ? 'bg-muted/50' : 'bg-muted/20'}`}>
                                       <Badge variant="outline" className="w-12 justify-center">
                                         {setIdx + 1}
                                       </Badge>
                                       {isCardio ? (
                                         <div className="flex-1">
                                           <div className="text-xs text-muted-foreground">Distance</div>
-                                          <div className="font-semibold">
-                                            {set.distance !== undefined ? `${Number(set.distance).toFixed(2).replace(/\.?0+$/, '')} miles` : 'N/A'}
-                                          </div>
+                                          {isEditing ? (
+                                            <Input
+                                              type="number"
+                                              step="0.01"
+                                              value={set.distance ?? ''}
+                                              onChange={(e) => updateSet(idx, setIdx, { 
+                                                distance: e.target.value === '' ? undefined : parseFloat(e.target.value) 
+                                              })}
+                                              className="mt-1"
+                                              placeholder="0"
+                                            />
+                                          ) : (
+                                            <div className="font-semibold">
+                                              {set.distance !== undefined ? `${Number(set.distance).toFixed(2).replace(/\.?0+$/, '')} miles` : 'N/A'}
+                                            </div>
+                                          )}
                                         </div>
                                       ) : (
                                         <div className="flex-1 grid grid-cols-2 gap-4">
                                           <div>
                                             <div className="text-xs text-muted-foreground">Reps</div>
-                                            <div className="font-semibold">
-                                              {set.reps ?? (set.repWeights?.length ?? 0)}
-                                            </div>
+                                            {isEditing ? (
+                                              <Input
+                                                type="number"
+                                                value={set.reps ?? ''}
+                                                onChange={(e) => updateSet(idx, setIdx, { 
+                                                  reps: e.target.value === '' ? undefined : parseInt(e.target.value) 
+                                                })}
+                                                className="mt-1"
+                                                placeholder="0"
+                                              />
+                                            ) : (
+                                              <div className="font-semibold">
+                                                {set.reps ?? (set.repWeights?.length ?? 0)}
+                                              </div>
+                                            )}
                                           </div>
                                           <div>
                                             <div className="text-xs text-muted-foreground">Weight</div>
-                                            <div className="font-semibold">
-                                              {set.weight ?? (set.repWeights ? (set.repWeights.reduce((a, b) => a + b, 0) / set.repWeights.length).toFixed(1) : 0)} lbs
-                                            </div>
+                                            {isEditing ? (
+                                              <Input
+                                                type="number"
+                                                step="0.1"
+                                                value={set.weight ?? ''}
+                                                onChange={(e) => updateSet(idx, setIdx, { 
+                                                  weight: e.target.value === '' ? undefined : parseFloat(e.target.value) 
+                                                })}
+                                                className="mt-1"
+                                                placeholder="0"
+                                              />
+                                            ) : (
+                                              <div className="font-semibold">
+                                                {set.weight ?? (set.repWeights ? (set.repWeights.reduce((a, b) => a + b, 0) / set.repWeights.length).toFixed(1) : 0)} lbs
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
+                                      )}
+                                      {isEditing && (
+                                        <Button
+                                          variant={set.completed ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => updateSet(idx, setIdx, { completed: !set.completed })}
+                                          className={`flex-shrink-0 h-9 w-9 p-0 ${
+                                            set.completed
+                                              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                              : 'hover:bg-muted'
+                                          }`}
+                                          title={set.completed ? 'Mark as incomplete' : 'Mark as complete'}
+                                        >
+                                          {set.completed ? (
+                                            <Check className="h-4 w-4" />
+                                          ) : (
+                                            <Circle className="h-4 w-4 opacity-50" />
+                                          )}
+                                        </Button>
                                       )}
                                     </div>
                                   ))
                                 ) : (
                                   <div className="text-sm text-muted-foreground py-2">
-                                    No completed sets
+                                    No sets
                                   </div>
                                 )}
                               </div>

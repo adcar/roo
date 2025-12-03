@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
@@ -39,6 +40,7 @@ function WorkoutContent() {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showFinishWarning, setShowFinishWarning] = useState(false);
 
   useEffect(() => {
     if (programId) {
@@ -177,6 +179,8 @@ function WorkoutContent() {
                   }
                   
                   // Final fallback to program defaults
+                  // For weight: if there's previous history, use that weight; otherwise leave empty (undefined)
+                  // Only use program default weight if there's previous history (featured exercise)
                   if (isCardio) {
                     return {
                       distance: defaultDistance,
@@ -185,7 +189,7 @@ function WorkoutContent() {
                   } else {
                   return {
                     reps: defaultReps,
-                    weight: defaultWeight,
+                    weight: previousExerciseLog ? defaultWeight : undefined, // Empty for new exercises
                     completed: false,
                   };
                   }
@@ -216,13 +220,13 @@ function WorkoutContent() {
                         distance: ex.distance || 0,
                         completed: false,
                       };
-                    } else {
-                      return {
-                  reps: ex.reps || 0,
-                  weight: ex.weight || 0,
-                  completed: false,
-                      };
-                    }
+                } else {
+                  return {
+              reps: ex.reps || 0,
+              weight: undefined, // Empty for new exercises (no previous history)
+              completed: false,
+                  };
+                }
                   }),
                 };
               });
@@ -296,7 +300,7 @@ function WorkoutContent() {
                 } else {
                   return {
               reps: ex.reps || 0,
-              weight: ex.weight || 0,
+              weight: undefined, // Empty for new exercises (no previous history)
               completed: false,
                   };
                 }
@@ -576,17 +580,43 @@ function WorkoutContent() {
   const finishWorkout = async () => {
     if (!program || !selectedDay || isFinishing) return;
 
+    // Check if there are any incomplete sets
+    const hasIncompleteSets = exerciseLogs.some(exerciseLog => 
+      exerciseLog.sets.some(set => !set.completed)
+    );
+
+    if (hasIncompleteSets) {
+      setShowFinishWarning(true);
+      return;
+    }
+
+    await performFinishWorkout();
+  };
+
+  const performFinishWorkout = async () => {
+    if (!program || !selectedDay || isFinishing) return;
+
     setIsFinishing(true);
 
     // For non-split programs, always save as week A
     const isSplit = program.isSplit !== false;
     const effectiveWeek = isSplit ? selectedWeek : 'A';
+    // Normalize exercise logs: set weight to 0 if empty when saving completed sets
+    const normalizedExercises = exerciseLogs.map(exerciseLog => ({
+      ...exerciseLog,
+      sets: exerciseLog.sets.map(set => ({
+        ...set,
+        // If set is completed and weight is undefined/null, set it to 0
+        weight: set.completed && (set.weight === undefined || set.weight === null) ? 0 : set.weight,
+      })),
+    }));
+
     const workoutLog = {
       programId: program.id,
       dayId: selectedDay.id,
       week: effectiveWeek,
       date: new Date().toISOString(),
-      exercises: exerciseLogs,
+      exercises: normalizedExercises,
     };
 
     try {
@@ -1128,6 +1158,28 @@ function WorkoutContent() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Finish Workout Warning Dialog */}
+        <AlertDialog open={showFinishWarning} onOpenChange={setShowFinishWarning}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unfinished Sets Detected</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have sets that haven't been marked as completed. Are you sure you want to finish the workout? 
+                Only completed sets will be saved.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowFinishWarning(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                setShowFinishWarning(false);
+                performFinishWorkout();
+              }}>
+                Finish Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="flex gap-2">
           <Button
