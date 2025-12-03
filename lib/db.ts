@@ -304,6 +304,19 @@ export async function getDb() {
       // Migration failed, but that's okay - it will populate naturally as users add foods
       console.log('Migration note: user_foods will populate as users add foods to their logs');
     }
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS workout_notes (
+        id TEXT PRIMARY KEY,
+        program_id TEXT NOT NULL,
+        day_id TEXT NOT NULL,
+        week TEXT NOT NULL,
+        notes TEXT,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
   }
 
   return db;

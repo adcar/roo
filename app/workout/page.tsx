@@ -9,11 +9,12 @@ import { useExercises } from '@/hooks/useExercises';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen, FileText } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
 
@@ -37,6 +38,9 @@ function WorkoutContent() {
   const [showMobileImages, setShowMobileImages] = useState(false);
   const [showMusclesWorked, setShowMusclesWorked] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [workoutNotes, setWorkoutNotes] = useState<string>('');
+  const [notesSaveTimeout, setNotesSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -370,6 +374,75 @@ function WorkoutContent() {
     }
   }, [exerciseLogs.length, program, selectedDay, programId, dayId, lastSavedAt, saveProgress]);
 
+  // Fetch workout notes
+  useEffect(() => {
+    if (!program || !selectedDay || !programId || !dayId) return;
+    
+    const isSplit = program.isSplit !== false;
+    const effectiveWeek = isSplit ? selectedWeek : 'A';
+    
+    fetch(`/api/workout-notes?programId=${programId}&dayId=${dayId}&week=${effectiveWeek}`)
+      .then(res => res.json())
+      .then((data: { notes?: { notes: string } | null } | { error?: string }) => {
+        if ('error' in data) {
+          console.error('Error fetching notes:', data);
+          return;
+        }
+        if (data.notes) {
+          setWorkoutNotes(data.notes.notes || '');
+        } else {
+          setWorkoutNotes('');
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching notes:', error);
+      });
+  }, [program, selectedDay, programId, dayId, selectedWeek]);
+
+  const saveNotes = useCallback(async () => {
+    if (!program || !selectedDay || !programId || !dayId) return;
+    
+    const isSplit = program.isSplit !== false;
+    const effectiveWeek = isSplit ? selectedWeek : 'A';
+    
+    try {
+      await fetch('/api/workout-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId,
+          dayId,
+          week: effectiveWeek,
+          notes: workoutNotes,
+        }),
+      });
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
+  }, [program, selectedDay, programId, dayId, selectedWeek, workoutNotes]);
+
+  const handleNotesChange = (value: string) => {
+    setWorkoutNotes(value);
+    
+    // Auto-save with debouncing
+    if (notesSaveTimeout) {
+      clearTimeout(notesSaveTimeout);
+    }
+    const timeout = setTimeout(() => {
+      saveNotes();
+    }, 1000); // Save 1 second after last change
+    setNotesSaveTimeout(timeout);
+  };
+
+  // Cleanup notes timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (notesSaveTimeout) {
+        clearTimeout(notesSaveTimeout);
+      }
+    };
+  }, [notesSaveTimeout]);
+
   const updateSetLog = (setIndex: number, updates: Partial<SetLog>) => {
     const newLogs = [...exerciseLogs];
     newLogs[currentExerciseIndex].sets[setIndex] = {
@@ -563,6 +636,7 @@ function WorkoutContent() {
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
       setShowInstructions(false); // Reset instructions visibility when changing exercises
+      setShowNotes(false); // Reset notes visibility when changing exercises
     }
   };
 
@@ -574,6 +648,7 @@ function WorkoutContent() {
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
       setShowInstructions(false); // Reset instructions visibility when changing exercises
+      setShowNotes(false); // Reset notes visibility when changing exercises
     }
   };
 
@@ -1028,6 +1103,74 @@ function WorkoutContent() {
                       )}
                     </div>
                   )}
+
+                  {/* Notes - Desktop: Always visible (2xl and above) */}
+                  <div className="hidden 2xl:block mt-4">
+                    <h3 className="font-semibold mb-3">My Notes</h3>
+                    <Textarea
+                      value={workoutNotes}
+                      onChange={(e) => handleNotesChange(e.target.value)}
+                      placeholder="Add your personal notes for this workout (e.g., 'Remember to put the J Cups to position 20')"
+                      rows={4}
+                      className="text-sm"
+                    />
+                  </div>
+
+                  {/* Notes - Desktop dropdown (md to 2xl) */}
+                  <div className="hidden md:block 2xl:hidden mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNotes(!showNotes)}
+                      className="w-full justify-between mb-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span>My Notes</span>
+                      </div>
+                      {showNotes ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                    {showNotes && (
+                      <Textarea
+                        value={workoutNotes}
+                        onChange={(e) => handleNotesChange(e.target.value)}
+                        placeholder="Add your personal notes for this workout (e.g., 'Remember to put the J Cups to position 20')"
+                        rows={4}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
+
+                  {/* Notes - Mobile dropdown */}
+                  <div className="md:hidden mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNotes(!showNotes)}
+                      className="w-full justify-between mb-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span>My Notes</span>
+                      </div>
+                      {showNotes ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                    {showNotes && (
+                      <Textarea
+                        value={workoutNotes}
+                        onChange={(e) => handleNotesChange(e.target.value)}
+                        placeholder="Add your personal notes for this workout (e.g., 'Remember to put the J Cups to position 20')"
+                        rows={4}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <Separator className="my-6" />

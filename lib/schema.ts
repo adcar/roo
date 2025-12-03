@@ -107,3 +107,14 @@ export const userFoods = sqliteTable('user_foods', {
 }, (table) => ({
   pk: primaryKey({ columns: [table.userId, table.productId] }),
 }));
+
+export const workoutNotes = sqliteTable('workout_notes', {
+  id: text('id').primaryKey(),
+  programId: text('program_id').notNull(),
+  dayId: text('day_id').notNull(),
+  week: text('week').notNull(), // 'A' or 'B'
+  notes: text('notes'), // User's custom notes for this workout
+  userId: text('user_id').notNull(), // User who owns these notes
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

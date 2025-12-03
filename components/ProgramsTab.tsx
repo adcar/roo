@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Program } from '@/types/exercise';
+import Image from 'next/image';
+import { Program, WorkoutDay } from '@/types/exercise';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2, Play, Settings, Eye } from 'lucide-react';
 import { useLoading } from '@/components/LoadingProvider';
+import { useExercises } from '@/hooks/useExercises';
 
 type WeekMapping = 'oddA' | 'oddB';
 
@@ -42,12 +44,14 @@ function getCurrentWeekNumber(): number {
 export default function ProgramsTab() {
   const router = useRouter();
   const { startLoading, stopLoading } = useLoading();
+  const { exercises } = useExercises();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [currentWeekNumber, setCurrentWeekNumber] = useState<number>(getCurrentWeekNumber());
   const [weekMapping, setWeekMapping] = useState<WeekMapping>('oddA');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>(getCurrentWeekLetter('oddA'));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inProgressWorkouts, setInProgressWorkouts] = useState<Map<string, { week: string; updatedAt: string }>>(new Map());
+  const [selectedDayBreakdown, setSelectedDayBreakdown] = useState<{ program: Program; day: WorkoutDay } | null>(null);
 
   useEffect(() => {
     fetchPrograms();
@@ -162,6 +166,10 @@ export default function ProgramsTab() {
     return progress !== undefined && progress.week === week;
   };
 
+  const getExercise = (exerciseId: string) => {
+    return exercises.find(ex => ex.id === exerciseId);
+  };
+
 
   return (
     <div>
@@ -254,8 +262,11 @@ export default function ProgramsTab() {
                   {program.days.map(day => (
                     <div 
                       key={day.id} 
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDayBreakdown({ program, day });
+                      }}
                     >
                       <div className="flex-1">
                         <div className="font-semibold text-sm">{day.name}</div>
@@ -355,6 +366,104 @@ export default function ProgramsTab() {
               </div>
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Day Breakdown Modal */}
+      <Dialog open={!!selectedDayBreakdown} onOpenChange={(open) => !open && setSelectedDayBreakdown(null)}>
+        <DialogContent className="sm:max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-2xl">{selectedDayBreakdown?.day.name}</DialogTitle>
+            <DialogDescription className="text-base">
+              From program: <span className="font-semibold text-foreground">{selectedDayBreakdown?.program.name}</span>
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDayBreakdown && (() => {
+            const { program, day } = selectedDayBreakdown;
+            const isSplit = program.isSplit !== false;
+            return (
+              <div className={`grid gap-6 ${isSplit ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+                {(['A', 'B'] as const).filter(week => isSplit || week === 'A').map(week => (
+                  <div key={week} className="space-y-4">
+                    {isSplit && (
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <h3 className="text-lg font-semibold">Week {week}</h3>
+                        <span className="text-sm text-muted-foreground">
+                          ({day[week === 'A' ? 'weekA' : 'weekB'].length} {day[week === 'A' ? 'weekA' : 'weekB'].length === 1 ? 'exercise' : 'exercises'})
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {day[week === 'A' ? 'weekA' : 'weekB'].map((programExercise, idx) => {
+                        const exercise = getExercise(programExercise.exerciseId);
+                        if (!exercise) return null;
+
+                        return (
+                          <div key={idx} className="group bg-card border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                            <div className="flex gap-4">
+                              {exercise.images[0] && (
+                                <div className="relative w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0 border">
+                                  <Image
+                                    src={`/exercise-images/${exercise.images[0]}`}
+                                    alt={exercise.name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-base mb-2 leading-tight">{exercise.name}</h4>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
+                                  {exercise.category === 'cardio' ? (
+                                    programExercise.distance !== undefined && (
+                                      <span className="font-medium">{Number(programExercise.distance).toFixed(2).replace(/\.?0+$/, '')} miles</span>
+                                    )
+                                  ) : (
+                                    <>
+                                      {programExercise.sets && (
+                                        <span className="font-medium">{programExercise.sets} {programExercise.sets === 1 ? 'set' : 'sets'}</span>
+                                      )}
+                                      {programExercise.reps && (
+                                        <span>× {programExercise.reps} {programExercise.reps === 1 ? 'rep' : 'reps'}</span>
+                                      )}
+                                      {programExercise.weight && (
+                                        <span>@ {programExercise.weight} lbs</span>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                                {programExercise.notes && (
+                                  <div className="text-sm text-muted-foreground mt-2 italic border-l-2 border-primary/30 pl-2">
+                                    {programExercise.notes}
+                                  </div>
+                                )}
+                                {exercise.primaryMuscles.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-3">
+                                    {exercise.primaryMuscles.map(muscle => (
+                                      <span key={muscle} className="px-2.5 py-1 bg-secondary/50 text-secondary-foreground text-xs rounded-md font-medium">
+                                        {muscle}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {day[week === 'A' ? 'weekA' : 'weekB'].length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No exercises for this week</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
