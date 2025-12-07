@@ -141,6 +141,7 @@ export async function GET(request: Request) {
       .select({
         userId: schema.workoutLogs.userId,
         exercises: schema.workoutLogs.exercises,
+        date: schema.workoutLogs.date,
       })
       .from(schema.workoutLogs)
       .where(
@@ -150,22 +151,35 @@ export async function GET(request: Request) {
         ) as any
       );
 
-    // Count all workouts per user (any workout counts, even with just 1 exercise)
-    const userWorkoutCounts = new Map<string, number>();
+    // Count unique workout days per user (max 1 workout per day counts)
+    // Group by userId and date (normalized to just the day, ignoring time)
+    const userWorkoutDays = new Map<string, Set<string>>();
     
     for (const log of logs) {
       try {
         const exercises = JSON.parse(log.exercises);
         // Any workout counts for the leaderboard (even with just 1 exercise)
         if (Array.isArray(exercises) && exercises.length >= 1) {
-          const currentCount = userWorkoutCounts.get(log.userId) || 0;
-          userWorkoutCounts.set(log.userId, currentCount + 1);
+          // Normalize date to just the day (YYYY-MM-DD) to count unique days
+          // Extract date part from ISO string (YYYY-MM-DD) to avoid timezone issues
+          const dayKey = log.date.split('T')[0];
+          
+          if (!userWorkoutDays.has(log.userId)) {
+            userWorkoutDays.set(log.userId, new Set());
+          }
+          userWorkoutDays.get(log.userId)!.add(dayKey);
         }
       } catch (e) {
         // Skip invalid JSON
         console.error('Error parsing exercises:', e);
       }
     }
+
+    // Convert Set sizes to counts
+    const userWorkoutCounts = new Map<string, number>();
+    userWorkoutDays.forEach((days, userId) => {
+      userWorkoutCounts.set(userId, days.size);
+    });
 
     // Filter users with at least 1 qualifying workout (qualification threshold)
     const qualifyingUsers = Array.from(userWorkoutCounts.entries())

@@ -34,3 +34,4 @@ export function useAvailableEquipment() {
   return { availableEquipment, loading };
 }
 
+

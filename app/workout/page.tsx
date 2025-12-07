@@ -45,6 +45,7 @@ function WorkoutContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showFinishWarning, setShowFinishWarning] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (programId) {
@@ -653,7 +654,7 @@ function WorkoutContent() {
   };
 
   const finishWorkout = async () => {
-    if (!program || !selectedDay || isFinishing) return;
+    if (!program || !selectedDay || isFinishing || isSubmitting) return;
 
     // Check if there are any incomplete sets
     const hasIncompleteSets = exerciseLogs.some(exerciseLog => 
@@ -669,9 +670,10 @@ function WorkoutContent() {
   };
 
   const performFinishWorkout = async () => {
-    if (!program || !selectedDay || isFinishing) return;
+    if (!program || !selectedDay || isFinishing || isSubmitting) return;
 
     setIsFinishing(true);
+    setIsSubmitting(true);
 
     // For non-split programs, always save as week A
     const isSplit = program.isSplit !== false;
@@ -734,6 +736,7 @@ function WorkoutContent() {
         variant: 'destructive'
       });
       setIsFinishing(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -1313,12 +1316,13 @@ function WorkoutContent() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowFinishWarning(false)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => {
+              <AlertDialogCancel onClick={() => setShowFinishWarning(false)} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => {
+                if (isSubmitting) return;
                 setShowFinishWarning(false);
-                performFinishWorkout();
-              }}>
-                Finish Anyway
+                await performFinishWorkout();
+              }} disabled={isSubmitting}>
+                {isSubmitting ? 'Finishing...' : 'Finish Anyway'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -102,7 +102,7 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
             Top performers for {currentMonth}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Rankings are based on completed workouts. Complete at least 1 workout to appear on the leaderboard.
+            Rankings are based on workout days. Complete at least 1 workout day to appear on the leaderboard.
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
                 No one has qualified for the leaderboard this month yet.
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                Complete at least 1 workout to appear on the leaderboard!
+                Complete at least 1 workout day to appear on the leaderboard!
               </p>
             </CardContent>
           </Card>
@@ -168,7 +168,7 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
                           {entry.workoutCount}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          workout{entry.workoutCount !== 1 ? 's' : ''}
+                          workout day{entry.workoutCount !== 1 ? 's' : ''}
                         </div>
                       </div>
                     </div>
@@ -188,7 +188,10 @@ export function LeaderboardContent({ initialLeaderboard }: LeaderboardContentPro
               • Any workout counts for the leaderboard - even workouts with just 1 exercise
             </p>
             <p>
-              • You need to complete at least 1 workout to appear on the leaderboard
+              • You need to complete at least 1 workout day to appear on the leaderboard
+            </p>
+            <p>
+              • Multiple workouts on the same day count as 1 workout day
             </p>
             <p>
               • Rankings are updated automatically based on workout logs
