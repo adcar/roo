@@ -389,8 +389,10 @@ function WorkoutContent() {
           console.error('Error fetching notes:', data);
           return;
         }
-        if (data.notes) {
-          setWorkoutNotes(data.notes.notes || '');
+        // TypeScript now knows data is { notes?: { notes: string } | null }
+        const notesData = data as { notes?: { notes: string } | null };
+        if (notesData.notes) {
+          setWorkoutNotes(notesData.notes.notes || '');
         } else {
           setWorkoutNotes('');
         }
