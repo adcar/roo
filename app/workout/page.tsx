@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
+import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -46,6 +46,7 @@ function WorkoutContent() {
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showFinishWarning, setShowFinishWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isFinishingRef = useRef(false);
 
   useEffect(() => {
     if (programId) {
@@ -672,8 +673,9 @@ function WorkoutContent() {
   };
 
   const performFinishWorkout = async () => {
-    if (!program || !selectedDay || isFinishing || isSubmitting) return;
+    if (!program || !selectedDay || isFinishing || isSubmitting || isFinishingRef.current) return;
 
+    isFinishingRef.current = true;
     setIsFinishing(true);
     setIsSubmitting(true);
 
@@ -739,6 +741,7 @@ function WorkoutContent() {
       });
       setIsFinishing(false);
       setIsSubmitting(false);
+      isFinishingRef.current = false;
     }
   };
 
@@ -1320,7 +1323,7 @@ function WorkoutContent() {
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setShowFinishWarning(false)} disabled={isSubmitting}>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={async () => {
-                if (isSubmitting) return;
+                if (isSubmitting || isFinishing || isFinishingRef.current) return;
                 setShowFinishWarning(false);
                 await performFinishWorkout();
               }} disabled={isSubmitting}>
