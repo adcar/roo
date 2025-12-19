@@ -311,12 +311,22 @@ export async function getDb() {
         program_id TEXT NOT NULL,
         day_id TEXT NOT NULL,
         week TEXT NOT NULL,
+        exercise_id TEXT NOT NULL,
         notes TEXT,
         user_id TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
     `);
+
+    // Add exercise_id column to existing tables
+    try {
+      await client.execute(`
+        ALTER TABLE workout_notes ADD COLUMN exercise_id TEXT NOT NULL DEFAULT '';
+      `);
+    } catch (error) {
+      // Column might already exist, ignore error
+    }
   }
 
   return db;

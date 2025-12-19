@@ -113,7 +113,8 @@ export const workoutNotes = sqliteTable('workout_notes', {
   programId: text('program_id').notNull(),
   dayId: text('day_id').notNull(),
   week: text('week').notNull(), // 'A' or 'B'
-  notes: text('notes'), // User's custom notes for this workout
+  exerciseId: text('exercise_id').notNull(), // Exercise these notes are for
+  notes: text('notes'), // User's custom notes for this exercise
   userId: text('user_id').notNull(), // User who owns these notes
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

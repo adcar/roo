@@ -376,14 +376,19 @@ function WorkoutContent() {
     }
   }, [exerciseLogs.length, program, selectedDay, programId, dayId, lastSavedAt, saveProgress]);
 
+  // Reset notes when exercise changes
+  useEffect(() => {
+    setWorkoutNotes('');
+  }, [programId, dayId, selectedWeek, currentExerciseIndex]);
+
   // Fetch workout notes
   useEffect(() => {
-    if (!program || !selectedDay || !programId || !dayId) return;
-    
+    if (!program || !selectedDay || !programId || !dayId || !currentExercise) return;
+
     const isSplit = program.isSplit !== false;
     const effectiveWeek = isSplit ? selectedWeek : 'A';
-    
-    fetch(`/api/workout-notes?programId=${programId}&dayId=${dayId}&week=${effectiveWeek}`)
+
+    fetch(`/api/workout-notes?programId=${programId}&dayId=${dayId}&week=${effectiveWeek}&exerciseId=${currentExercise.id}`)
       .then(res => res.json())
       .then((data: { notes?: { notes: string } | null } | { error?: string }) => {
         if ('error' in data) {
@@ -401,14 +406,14 @@ function WorkoutContent() {
       .catch(error => {
         console.error('Error fetching notes:', error);
       });
-  }, [program, selectedDay, programId, dayId, selectedWeek]);
+  }, [program, selectedDay, programId, dayId, selectedWeek, currentExercise]);
 
-  const saveNotes = useCallback(async () => {
-    if (!program || !selectedDay || !programId || !dayId) return;
-    
+  const saveNotes = useCallback(async (notesToSave: string) => {
+    if (!program || !selectedDay || !programId || !dayId || !currentExercise) return;
+
     const isSplit = program.isSplit !== false;
     const effectiveWeek = isSplit ? selectedWeek : 'A';
-    
+
     try {
       await fetch('/api/workout-notes', {
         method: 'POST',
@@ -417,13 +422,14 @@ function WorkoutContent() {
           programId,
           dayId,
           week: effectiveWeek,
-          notes: workoutNotes,
+          exerciseId: currentExercise.id,
+          notes: notesToSave,
         }),
       });
     } catch (error) {
       console.error('Error saving notes:', error);
     }
-  }, [program, selectedDay, programId, dayId, selectedWeek, workoutNotes]);
+  }, [program, selectedDay, programId, dayId, selectedWeek, currentExercise]);
 
   const handleNotesChange = (value: string) => {
     setWorkoutNotes(value);
@@ -433,7 +439,7 @@ function WorkoutContent() {
       clearTimeout(notesSaveTimeout);
     }
     const timeout = setTimeout(() => {
-      saveNotes();
+      saveNotes(value);
     }, 1000); // Save 1 second after last change
     setNotesSaveTimeout(timeout);
   };

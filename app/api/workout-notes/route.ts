@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
-// GET: Fetch workout notes (by programId, dayId, week)
+// GET: Fetch workout notes (by programId, dayId, week, exerciseId)
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
   const programId = searchParams.get('programId');
   const dayId = searchParams.get('dayId');
   const week = searchParams.get('week');
+  const exerciseId = searchParams.get('exerciseId');
 
-  if (!programId || !dayId || !week) {
+  if (!programId || !dayId || !week || !exerciseId) {
     return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
   }
 
@@ -35,7 +36,8 @@ export async function GET(request: NextRequest) {
           eq(schema.workoutNotes.userId, session.user.id),
           eq(schema.workoutNotes.programId, programId),
           eq(schema.workoutNotes.dayId, dayId),
-          eq(schema.workoutNotes.week, week)
+          eq(schema.workoutNotes.week, week),
+          eq(schema.workoutNotes.exerciseId, exerciseId)
         )
       );
 
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
         programId: notesData.programId,
         dayId: notesData.dayId,
         week: notesData.week,
+        exerciseId: notesData.exerciseId,
         notes: notesData.notes || '',
         createdAt: notesData.createdAt,
         updatedAt: notesData.updatedAt,
@@ -73,9 +76,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { programId, dayId, week, notes } = body;
+    const { programId, dayId, week, exerciseId, notes } = body;
 
-    if (!programId || !dayId || !week) {
+    if (!programId || !dayId || !week || !exerciseId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -92,7 +95,8 @@ export async function POST(request: NextRequest) {
           eq(schema.workoutNotes.userId, userId),
           eq(schema.workoutNotes.programId, programId),
           eq(schema.workoutNotes.dayId, dayId),
-          eq(schema.workoutNotes.week, week)
+          eq(schema.workoutNotes.week, week),
+          eq(schema.workoutNotes.exerciseId, exerciseId)
         )
       );
 
@@ -113,12 +117,13 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Create new notes
-      const id = `${userId}-${programId}-${dayId}-${week}`;
+      const id = `${userId}-${programId}-${dayId}-${week}-${exerciseId}`;
       await db.insert(schema.workoutNotes).values({
         id,
         programId,
         dayId,
         week,
+        exerciseId,
         notes: notes || '',
         userId,
         createdAt: now,
@@ -136,6 +141,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to save notes' }, { status: 500 });
   }
 }
+
+
 
 
 
