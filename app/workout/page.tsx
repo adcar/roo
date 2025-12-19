@@ -1302,14 +1302,14 @@ function WorkoutContent() {
                   <h3 className="font-semibold text-lg mb-4">
                     {currentExercise?.category === 'cardio' ? 'Track Your Distance' : 'Track Your Sets'}
                   </h3>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {currentLog?.sets.map((set, setIdx) => {
                       const isCardio = currentExercise?.category === 'cardio';
                       
                       return (
                       <div
                         key={setIdx}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
+                        className={`flex items-center gap-3 py-4 px-3 rounded-lg border transition-all ${
                           set.completed
                             ? 'bg-primary/10 border-primary/30 dark:bg-primary/20'
                             : 'bg-card border-border hover:border-primary/50'
