@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'rea
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Program, WorkoutDay, ExerciseLog, SetLog, WorkoutLog } from '@/types/exercise';
+import { Program, WorkoutDay, ExerciseLog, SetLog, WorkoutLog, Exercise } from '@/types/exercise';
 import { useExercises } from '@/hooks/useExercises';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ function WorkoutContent() {
   const [showFinishWarning, setShowFinishWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isFinishingRef = useRef(false);
+  const [prefetchedExercises, setPrefetchedExercises] = useState<Map<number, Exercise>>(new Map());
 
   useEffect(() => {
     if (programId) {
@@ -327,9 +328,10 @@ function WorkoutContent() {
     : [];
 
   const currentProgramExercise = currentExercises[currentExerciseIndex];
-  const currentExercise = currentProgramExercise
-    ? exercises.find(ex => ex.id === currentProgramExercise.exerciseId)
-    : null;
+  const currentExercise = prefetchedExercises.get(currentExerciseIndex) ||
+    (currentProgramExercise
+      ? exercises.find(ex => ex.id === currentProgramExercise.exerciseId)
+      : null);
   const currentLog = exerciseLogs[currentExerciseIndex];
 
   const saveProgress = useCallback(async () => {
@@ -407,6 +409,60 @@ function WorkoutContent() {
         console.error('Error fetching notes:', error);
       });
   }, [program, selectedDay, programId, dayId, selectedWeek, currentExercise]);
+
+  // Preload images for an exercise
+  const preloadExerciseImages = useCallback((exercise: Exercise) => {
+    if (exercise.images && exercise.images.length > 0 && typeof window !== 'undefined') {
+      exercise.images.forEach(imageName => {
+        const img = new window.Image();
+        img.src = `/exercise-images/${imageName}`;
+      });
+    }
+  }, []);
+
+  // Prefetch exercise data for adjacent exercises
+  const prefetchAdjacentExercises = useCallback(() => {
+    const currentProgramExercises = selectedDay
+      ? (() => {
+          const isSplit = program?.isSplit !== false;
+          const effectiveWeek = isSplit ? selectedWeek : 'A';
+          return effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
+        })()
+      : [];
+
+    // Prefetch next exercise
+    if (currentExerciseIndex < currentProgramExercises.length - 1) {
+      const nextExerciseId = currentProgramExercises[currentExerciseIndex + 1].exerciseId;
+      if (!prefetchedExercises.has(currentExerciseIndex + 1)) {
+        const nextExercise = exercises.find(ex => ex.id === nextExerciseId);
+        if (nextExercise) {
+          setPrefetchedExercises(prev => new Map(prev.set(currentExerciseIndex + 1, nextExercise)));
+          // Preload images for the next exercise
+          preloadExerciseImages(nextExercise);
+        }
+      }
+    }
+
+    // Prefetch previous exercise
+    if (currentExerciseIndex > 0) {
+      const prevExerciseId = currentProgramExercises[currentExerciseIndex - 1].exerciseId;
+      if (!prefetchedExercises.has(currentExerciseIndex - 1)) {
+        const prevExercise = exercises.find(ex => ex.id === prevExerciseId);
+        if (prevExercise) {
+          setPrefetchedExercises(prev => new Map(prev.set(currentExerciseIndex - 1, prevExercise)));
+          // Preload images for the previous exercise
+          preloadExerciseImages(prevExercise);
+        }
+      }
+    }
+  }, [currentExerciseIndex, selectedDay, selectedWeek, program, exercises, prefetchedExercises, preloadExerciseImages]);
+
+  // Prefetch adjacent exercises when current exercise changes
+  useEffect(() => {
+    if (selectedDay && program) {
+      prefetchAdjacentExercises();
+    }
+  }, [currentExerciseIndex, selectedDay, selectedWeek, program, prefetchAdjacentExercises]);
 
   const saveNotes = useCallback(async (notesToSave: string) => {
     if (!program || !selectedDay || !programId || !dayId || !currentExercise) return;
@@ -640,8 +696,8 @@ function WorkoutContent() {
 
   const nextExercise = async () => {
     if (currentExerciseIndex < currentExercises.length - 1) {
-      // Save progress before moving to next exercise
-      await saveProgress();
+      // Save progress asynchronously (non-blocking)
+      saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex + 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
@@ -652,8 +708,8 @@ function WorkoutContent() {
 
   const previousExercise = async () => {
     if (currentExerciseIndex > 0) {
-      // Save progress before moving to previous exercise
-      await saveProgress();
+      // Save progress asynchronously (non-blocking)
+      saveProgress();
       setCurrentExerciseIndex(currentExerciseIndex - 1);
       setShowMobileImages(false); // Reset images visibility when changing exercises
       setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
