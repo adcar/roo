@@ -45,8 +45,10 @@ function WorkoutContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showFinishWarning, setShowFinishWarning] = useState(false);
+  const [showAbandonModal, setShowAbandonModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isFinishingRef = useRef(false);
+  const isAbandoningRef = useRef(false);
   const [prefetchedExercises, setPrefetchedExercises] = useState<Map<number, Exercise>>(new Map());
 
   useEffect(() => {
@@ -509,6 +511,13 @@ function WorkoutContent() {
     };
   }, [notesSaveTimeout]);
 
+  // Reset abandoning ref when modal closes
+  useEffect(() => {
+    if (!showAbandonModal && isAbandoningRef.current) {
+      isAbandoningRef.current = false;
+    }
+  }, [showAbandonModal]);
+
   const updateSetLog = (setIndex: number, updates: Partial<SetLog>) => {
     const newLogs = [...exerciseLogs];
     newLogs[currentExerciseIndex].sets[setIndex] = {
@@ -768,7 +777,7 @@ function WorkoutContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(workoutLog),
       });
-      
+
       // Delete progress after successfully saving workout log
       try {
         await fetch(`/api/workout-progress?programId=${program.id}&dayId=${selectedDay.id}&week=${effectiveWeek}`, {
@@ -778,7 +787,7 @@ function WorkoutContent() {
         console.error('Error deleting progress:', error);
         // Don't fail the workout completion if progress deletion fails
       }
-      
+
       // Show confetti
       const confetti = (await import('canvas-confetti')).default;
       confetti({
@@ -786,12 +795,12 @@ function WorkoutContent() {
         spread: 70,
         origin: { y: 0.6 }
       });
-      
+
       toast('Workout completed! 🎉', {
         description: 'Great job! Your progress has been saved.',
         variant: 'success'
       });
-      
+
       setTimeout(() => {
         router.push('/');
       }, 1500);
@@ -806,6 +815,39 @@ function WorkoutContent() {
       isFinishingRef.current = false;
     }
   };
+
+  const abandonWorkout = useCallback(async () => {
+    if (!program || !selectedDay || isSubmitting || isAbandoningRef.current) return;
+
+    isAbandoningRef.current = true;
+    setIsSubmitting(true);
+
+    // For non-split programs, always use week A
+    const isSplit = program.isSplit !== false;
+    const effectiveWeek = isSplit ? selectedWeek : 'A';
+
+    try {
+      // Delete workout progress
+      await fetch(`/api/workout-progress?programId=${program.id}&dayId=${selectedDay.id}&week=${effectiveWeek}`, {
+        method: 'DELETE',
+      });
+
+      toast('Workout abandoned', {
+        description: 'Your progress has been discarded.',
+        variant: 'default'
+      });
+
+      router.push('/');
+    } catch (error) {
+      console.error('Error abandoning workout:', error);
+      toast('Failed to abandon workout', {
+        description: 'Please try again.',
+        variant: 'destructive'
+      });
+      setIsSubmitting(false);
+      isAbandoningRef.current = false;
+    }
+  }, [program, selectedDay, selectedWeek, isSubmitting]);
 
   if (!program || !selectedDay) {
     return null;
@@ -842,21 +884,32 @@ function WorkoutContent() {
                 Back to Programs
               </Button>
             </Link>
-            {lastSavedAt && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 text-green-500" />
-                    <span>Saved {lastSavedAt.toLocaleTimeString()}</span>
-                  </>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {lastSavedAt && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 text-green-500" />
+                      <span>Saved {lastSavedAt.toLocaleTimeString()}</span>
+                    </>
+                  )}
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAbandonModal(true)}
+                disabled={isSubmitting}
+                className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                Abandon Workout
+              </Button>
+            </div>
           </div>
           <h1 className="text-3xl font-bold">{program.name}</h1>
           <p className="text-muted-foreground">
@@ -1378,7 +1431,7 @@ function WorkoutContent() {
             <AlertDialogHeader>
               <AlertDialogTitle>Unfinished Sets Detected</AlertDialogTitle>
               <AlertDialogDescription>
-                You have sets that haven't been marked as completed. Are you sure you want to finish the workout? 
+                You have sets that haven't been marked as completed. Are you sure you want to finish the workout?
                 Only completed sets will be saved.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1395,18 +1448,45 @@ function WorkoutContent() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Abandon Workout Confirmation Dialog */}
+        <AlertDialog open={showAbandonModal} onOpenChange={setShowAbandonModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Abandon Workout?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to abandon this workout? Your progress will be lost and won't be saved to your stats.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowAbandonModal(false)} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (isSubmitting || isAbandoningRef.current) return;
+                  setShowAbandonModal(false);
+                  await abandonWorkout();
+                }}
+                disabled={isSubmitting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isSubmitting ? 'Abandoning...' : 'Abandon Workout'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={previousExercise}
-            disabled={currentExerciseIndex === 0}
+            disabled={currentExerciseIndex === 0 || isSubmitting}
             className="flex-1"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Previous
           </Button>
           {currentExerciseIndex === currentExercises.length - 1 ? (
-            <Button onClick={finishWorkout} className="flex-1" disabled={isFinishing}>
+            <Button onClick={finishWorkout} className="flex-1" disabled={isFinishing || isSubmitting}>
               {isFinishing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1417,7 +1497,7 @@ function WorkoutContent() {
               )}
             </Button>
           ) : (
-            <Button onClick={nextExercise} className="flex-1">
+            <Button onClick={nextExercise} className="flex-1" disabled={isSubmitting}>
               Next Exercise
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>

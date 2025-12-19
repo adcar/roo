@@ -269,18 +269,18 @@ export function ProgramsContent({
                   {program.days.map(day => (
                     <div 
                       key={day.id} 
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedDayBreakdown({ program, day });
                       }}
                     >
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm mb-1.5">{day.name}</div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           {program.isSplit !== false ? (
                             <>
-                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors whitespace-nowrap ${
                                 selectedWeek === 'A' 
                                   ? 'bg-primary text-primary-foreground' 
                                   : 'bg-muted text-muted-foreground'
@@ -289,7 +289,7 @@ export function ProgramsContent({
                                 <span className="opacity-70">·</span>
                                 <span className="font-normal">{day.weekA.length} exercise{day.weekA.length !== 1 ? 's' : ''}</span>
                               </div>
-                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors whitespace-nowrap ${
                                 selectedWeek === 'B' 
                                   ? 'bg-primary text-primary-foreground' 
                                   : 'bg-muted text-muted-foreground'
@@ -306,7 +306,7 @@ export function ProgramsContent({
                           )}
                         </div>
                       </div>
-                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${program.isSplit !== false ? selectedWeek : 'A'}`} onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/workout?programId=${program.id}&dayId=${day.id}&week=${program.isSplit !== false ? selectedWeek : 'A'}`} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                         {isDayInProgress(program.id, day.id, program.isSplit !== false ? selectedWeek : 'A') ? (
                           <Button size="sm" variant="secondary">
                             <Play className="mr-2 h-4 w-4" />
