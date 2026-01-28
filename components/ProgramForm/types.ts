@@ -17,6 +17,13 @@ export interface SortableExerciseItemProps {
   getExerciseCategory: (id: string) => string | undefined;
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: Partial<ProgramExercise>) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
+  isInSuperset?: boolean;
+  isFirstInSuperset?: boolean;
+  isLastInSuperset?: boolean;
+  supersetSize?: number;
+  onLinkWithNext?: () => void;
+  onUnlinkSuperset?: () => void;
+  canLinkWithNext?: boolean;
 }
 
 export interface DroppableEmptyWeekProps {
@@ -41,5 +48,7 @@ export interface WeekColumnProps {
   updateExercise: (dayId: string, week: 'A' | 'B', index: number, updates: Partial<ProgramExercise>) => void;
   removeExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
   onAddExercise: () => void;
+  onLinkExercises: (dayId: string, week: 'A' | 'B', index1: number, index2: number) => void;
+  onUnlinkExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
 }
 

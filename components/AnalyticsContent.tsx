@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, X, Edit2, Save, Check, Loader2, Circle } from 'lucide-react';
@@ -452,29 +453,75 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                         <>
                           <div>
                             <h3 className="font-semibold mb-4">Weight Progression</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                              <LineChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} name="Weight (lbs)" />
+                            <ChartContainer 
+                              config={{
+                                weight: {
+                                  label: "Weight (lbs)",
+                                  color: "var(--color-primary)",
+                                },
+                              } satisfies ChartConfig}
+                              className="h-[300px] w-full"
+                            >
+                              <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis 
+                                  dataKey="date" 
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickMargin={8}
+                                />
+                                <YAxis 
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickMargin={8}
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="weight" 
+                                  stroke="var(--color-weight)"
+                                  strokeWidth={2} 
+                                  connectNulls 
+                                  dot={{ fill: "var(--color-weight)", r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                />
                               </LineChart>
-                            </ResponsiveContainer>
+                            </ChartContainer>
                           </div>
                           <div>
                             <h3 className="font-semibold mb-4">Reps Progression</h3>
-                            <ResponsiveContainer width="100%" height={300}>
-                              <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="reps" fill="hsl(var(--secondary))" name="Reps" />
+                            <ChartContainer 
+                              config={{
+                                reps: {
+                                  label: "Reps",
+                                  color: "var(--color-primary)",
+                                },
+                              } satisfies ChartConfig}
+                              className="h-[300px] w-full"
+                            >
+                              <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis 
+                                  dataKey="date" 
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickMargin={8}
+                                />
+                                <YAxis 
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickMargin={8}
+                                />
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <ChartLegend content={<ChartLegendContent />} />
+                                <Bar 
+                                  dataKey="reps" 
+                                  fill="var(--color-reps)"
+                                  radius={[4, 4, 0, 0]} 
+                                />
                               </BarChart>
-                            </ResponsiveContainer>
+                            </ChartContainer>
                           </div>
                         </>
                       )}
@@ -554,7 +601,7 @@ export function AnalyticsContent({ initialWorkoutLogs, initialPrograms }: Analyt
                 <DayDetails
                   date={selectedDate}
                   workouts={selectedDate ? getWorkoutsForDate(selectedDate) : []}
-                  programs={programs.map(p => ({ id: p.id, name: p.name }))}
+                  programs={programs.map(p => ({ id: p.id, name: p.name, days: p.days?.map(d => ({ id: d.id, name: d.name })) }))}
                   exercises={exercises.map(e => ({ id: e.id, name: e.name, category: e.category }))}
                 />
               </div>

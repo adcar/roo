@@ -14,9 +14,23 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen, FileText } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ChevronLeft, X, Loader2, ChevronDown, ChevronUp, Image as ImageIcon, BicepsFlexed, BookOpen, FileText, Trophy } from 'lucide-react';
 import Model, { IExerciseData, Muscle } from 'react-body-highlighter';
 import { toast } from '@/components/ui/toast';
+
+// Type for a group of exercises (single exercise or superset)
+interface ExerciseGroup {
+  exercises: { index: number; exerciseId: string; supersetId?: string }[];
+  isSuperSet: boolean;
+}
+
+// Type for personal records
+interface PR {
+  exerciseId: string;
+  maxWeight: number;
+  maxReps: number;
+  date: string;
+}
 
 function WorkoutContent() {
   const searchParams = useSearchParams();
@@ -28,6 +42,7 @@ function WorkoutContent() {
   const [selectedDay, setSelectedDay] = useState<WorkoutDay | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B'>('A');
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [currentSupersetPosition, setCurrentSupersetPosition] = useState(0); // Position within current superset
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
   const [highlightedMuscle, setHighlightedMuscle] = useState<string | null>(null);
   const [clickedMuscle, setClickedMuscle] = useState<{ muscle: string; view: 'anterior' | 'posterior' } | null>(null);
@@ -50,6 +65,7 @@ function WorkoutContent() {
   const isFinishingRef = useRef(false);
   const isAbandoningRef = useRef(false);
   const [prefetchedExercises, setPrefetchedExercises] = useState<Map<number, Exercise>>(new Map());
+  const [prs, setPrs] = useState<Record<string, PR>>({});
 
   useEffect(() => {
     if (programId) {
@@ -85,6 +101,22 @@ function WorkoutContent() {
         });
     }
   }, [programId, dayId, searchParams]);
+
+  // Fetch personal records
+  useEffect(() => {
+    fetch('/api/workout-logs/prs')
+      .then(res => res.json())
+      .then((data: Record<string, PR> | { error?: string }) => {
+        if ('error' in data) {
+          console.error('Error fetching PRs:', data);
+          return;
+        }
+        setPrs(data);
+      })
+      .catch(error => {
+        console.error('Error fetching PRs:', error);
+      });
+  }, []);
 
   useEffect(() => {
     if (selectedDay && programId && dayId) {
@@ -328,6 +360,62 @@ function WorkoutContent() {
         return effectiveWeek === 'A' ? selectedDay.weekA : selectedDay.weekB;
       })()
     : [];
+
+  // Organize exercises into groups (single exercises or supersets)
+  const exerciseGroups = useMemo((): ExerciseGroup[] => {
+    if (currentExercises.length === 0) return [];
+    
+    const groups: ExerciseGroup[] = [];
+    const processedIndices = new Set<number>();
+    
+    currentExercises.forEach((exercise, index) => {
+      if (processedIndices.has(index)) return;
+      
+      if (exercise.supersetId) {
+        // Find all exercises in this superset
+        const supersetExercises = currentExercises
+          .map((ex, idx) => ({ ex, idx }))
+          .filter(({ ex }) => ex.supersetId === exercise.supersetId);
+        
+        groups.push({
+          exercises: supersetExercises.map(({ ex, idx }) => ({
+            index: idx,
+            exerciseId: ex.exerciseId,
+            supersetId: ex.supersetId,
+          })),
+          isSuperSet: true,
+        });
+        
+        supersetExercises.forEach(({ idx }) => processedIndices.add(idx));
+      } else {
+        // Single exercise
+        groups.push({
+          exercises: [{
+            index,
+            exerciseId: exercise.exerciseId,
+          }],
+          isSuperSet: false,
+        });
+        processedIndices.add(index);
+      }
+    });
+    
+    return groups;
+  }, [currentExercises]);
+
+  // Find which group the current exercise belongs to
+  const currentGroupIndex = useMemo(() => {
+    for (let i = 0; i < exerciseGroups.length; i++) {
+      if (exerciseGroups[i].exercises.some(ex => ex.index === currentExerciseIndex)) {
+        return i;
+      }
+    }
+    return 0;
+  }, [exerciseGroups, currentExerciseIndex]);
+
+  const currentGroup = exerciseGroups[currentGroupIndex];
+  const isInSuperset = currentGroup?.isSuperSet || false;
+  const supersetExercises = currentGroup?.exercises || [];
 
   const currentProgramExercise = currentExercises[currentExerciseIndex];
   const currentExercise = prefetchedExercises.get(currentExerciseIndex) ||
@@ -703,29 +791,50 @@ function WorkoutContent() {
     });
   };
 
-  const nextExercise = async () => {
-    if (currentExerciseIndex < currentExercises.length - 1) {
+  // Navigate to next group (superset or single exercise)
+  const nextGroup = async () => {
+    if (currentGroupIndex < exerciseGroups.length - 1) {
       // Save progress asynchronously (non-blocking)
       saveProgress();
-      setCurrentExerciseIndex(currentExerciseIndex + 1);
-      setShowMobileImages(false); // Reset images visibility when changing exercises
-      setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
-      setShowInstructions(false); // Reset instructions visibility when changing exercises
-      setShowNotes(false); // Reset notes visibility when changing exercises
+      // Move to the first exercise of the next group
+      const nextGroupExercises = exerciseGroups[currentGroupIndex + 1].exercises;
+      setCurrentExerciseIndex(nextGroupExercises[0].index);
+      setCurrentSupersetPosition(0);
+      setShowMobileImages(false);
+      setShowMusclesWorked(false);
+      setShowInstructions(false);
+      setShowNotes(false);
     }
   };
 
-  const previousExercise = async () => {
-    if (currentExerciseIndex > 0) {
+  // Navigate to previous group
+  const previousGroup = async () => {
+    if (currentGroupIndex > 0) {
       // Save progress asynchronously (non-blocking)
       saveProgress();
-      setCurrentExerciseIndex(currentExerciseIndex - 1);
-      setShowMobileImages(false); // Reset images visibility when changing exercises
-      setShowMusclesWorked(false); // Reset muscles visibility when changing exercises
-      setShowInstructions(false); // Reset instructions visibility when changing exercises
-      setShowNotes(false); // Reset notes visibility when changing exercises
+      // Move to the first exercise of the previous group
+      const prevGroupExercises = exerciseGroups[currentGroupIndex - 1].exercises;
+      setCurrentExerciseIndex(prevGroupExercises[0].index);
+      setCurrentSupersetPosition(0);
+      setShowMobileImages(false);
+      setShowMusclesWorked(false);
+      setShowInstructions(false);
+      setShowNotes(false);
     }
   };
+
+  // Switch to a specific exercise within the current superset
+  const switchToSupersetExercise = (exerciseIndex: number) => {
+    const positionInSuperset = supersetExercises.findIndex(ex => ex.index === exerciseIndex);
+    if (positionInSuperset !== -1) {
+      setCurrentExerciseIndex(exerciseIndex);
+      setCurrentSupersetPosition(positionInSuperset);
+    }
+  };
+
+  // Legacy navigation (kept for compatibility, now navigates between groups)
+  const nextExercise = nextGroup;
+  const previousExercise = previousGroup;
 
   const finishWorkout = async () => {
     if (!program || !selectedDay || isFinishing || isSubmitting) return;
@@ -905,9 +1014,10 @@ function WorkoutContent() {
                 size="sm"
                 onClick={() => setShowAbandonModal(true)}
                 disabled={isSubmitting}
-                className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground md:px-3"
               >
-                Abandon Workout
+                <X className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">Abandon Workout</span>
               </Button>
             </div>
           </div>
@@ -921,11 +1031,55 @@ function WorkoutContent() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-center">
-              <div>
-                <Badge variant="outline" className="mb-2">
-                  Exercise {currentExerciseIndex + 1} of {currentExercises.length}
-                </Badge>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <Badge variant="outline">
+                    {isInSuperset ? 'Superset' : 'Exercise'} {currentGroupIndex + 1} of {exerciseGroups.length}
+                  </Badge>
+                  {isInSuperset && (
+                    <Badge variant="default" className="bg-primary">
+                      Superset ({supersetExercises.length} exercises)
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Superset exercise tabs */}
+                {isInSuperset && supersetExercises.length > 1 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {supersetExercises.map((ssEx, idx) => {
+                      const ssExercise = exercises.find(ex => ex.id === ssEx.exerciseId);
+                      const isActive = ssEx.index === currentExerciseIndex;
+                      return (
+                        <Button
+                          key={ssEx.index}
+                          variant={isActive ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => switchToSupersetExercise(ssEx.index)}
+                          className={`text-sm ${isActive ? '' : 'text-muted-foreground'}`}
+                        >
+                          <span className="font-bold mr-1">{String.fromCharCode(65 + idx)}</span>
+                          <span className="truncate max-w-[120px]">{ssExercise?.name || 'Unknown'}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+                
                 <CardTitle className="text-3xl">{currentExercise?.name}</CardTitle>
+                {/* Personal Record Display */}
+                {currentExercise && prs[currentExercise.id] && currentExercise.category !== 'cardio' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+                      <Trophy className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                        PR: {prs[currentExercise.id].maxWeight} lbs
+                        {prs[currentExercise.id].maxReps > 0 && (
+                          <span className="text-amber-500/80"> × {prs[currentExercise.id].maxReps} reps</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -1478,14 +1632,14 @@ function WorkoutContent() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={previousExercise}
-            disabled={currentExerciseIndex === 0 || isSubmitting}
+            onClick={previousGroup}
+            disabled={currentGroupIndex === 0 || isSubmitting}
             className="flex-1"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Previous
           </Button>
-          {currentExerciseIndex === currentExercises.length - 1 ? (
+          {currentGroupIndex === exerciseGroups.length - 1 ? (
             <Button onClick={finishWorkout} className="flex-1" disabled={isFinishing || isSubmitting}>
               {isFinishing ? (
                 <>
@@ -1497,8 +1651,8 @@ function WorkoutContent() {
               )}
             </Button>
           ) : (
-            <Button onClick={nextExercise} className="flex-1" disabled={isSubmitting}>
-              Next Exercise
+            <Button onClick={nextGroup} className="flex-1" disabled={isSubmitting}>
+              {isInSuperset ? 'Next Superset' : 'Next Exercise'}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           )}

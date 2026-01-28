@@ -22,6 +22,7 @@ export interface ProgramExercise {
   distance?: number; // Distance in miles for cardio exercises
   notes?: string;
   order?: number; // Explicit order field for database storage
+  supersetId?: string; // Groups exercises into supersets - exercises with the same supersetId are performed back-to-back
 }
 
 export interface WorkoutDay {

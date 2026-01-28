@@ -23,6 +23,8 @@ interface DayTabsProps {
   newDayName: string;
   onNewDayNameChange: (name: string) => void;
   isSplit?: boolean;
+  onLinkExercises: (dayId: string, week: 'A' | 'B', index1: number, index2: number) => void;
+  onUnlinkExercise: (dayId: string, week: 'A' | 'B', index: number) => void;
 }
 
 export default function DayTabs({
@@ -40,6 +42,8 @@ export default function DayTabs({
   newDayName,
   onNewDayNameChange,
   isSplit = true,
+  onLinkExercises,
+  onUnlinkExercise,
 }: DayTabsProps) {
   const [editingDayId, setEditingDayId] = useState<string | null>(null);
   const [editingDayName, setEditingDayName] = useState('');
@@ -230,6 +234,8 @@ export default function DayTabs({
                         updateExercise={updateExercise}
                         removeExercise={removeExercise}
                         onAddExercise={() => onAddExercise(day.id, week)}
+                        onLinkExercises={onLinkExercises}
+                        onUnlinkExercise={onUnlinkExercise}
                       />
                     );
                   })}

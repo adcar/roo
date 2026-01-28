@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator"
 interface DayDetailsProps {
   date: Date | null
   workouts: WorkoutLog[]
-  programs: Array<{ id: string; name: string }>
+  programs: Array<{ id: string; name: string; days?: Array<{ id: string; name: string }> }>
   exercises: Array<{ id: string; name: string; category?: Exercise['category'] }>
 }
 
@@ -57,10 +57,12 @@ export function DayDetails({ date, workouts, programs, exercises }: DayDetailsPr
         <div className="flex gap-2 flex-wrap mt-2">
           {workouts.map((workout, idx) => {
             const program = programs.find(p => p.id === workout.programId)
+            const workoutDay = program?.days?.find(d => d.id === workout.dayId)
             return (
               <Badge key={idx} variant="secondary">
                 {program?.name || `Program ${workout.programId.slice(-6)}`}
-                {workout.week && ` - Week ${workout.week}`}
+                {workoutDay?.name && ` • ${workoutDay.name}`}
+                {workout.week && ` • Week ${workout.week}`}
               </Badge>
             )
           })}
@@ -70,13 +72,20 @@ export function DayDetails({ date, workouts, programs, exercises }: DayDetailsPr
         {workouts.map((workout, workoutIdx) => {
           const program = programs.find(p => p.id === workout.programId)
           const programName = program?.name || `Program ${workout.programId.slice(-6)}`
+          const workoutDay = program?.days?.find(d => d.id === workout.dayId)
+          const dayName = workoutDay?.name
 
           return (
             <div key={workoutIdx}>
               {workoutIdx > 0 && <Separator className="my-4" />}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">{programName}</h3>
+                  <div>
+                    <h3 className="font-semibold text-lg">{programName}</h3>
+                    {dayName && (
+                      <p className="text-sm text-muted-foreground">{dayName}</p>
+                    )}
+                  </div>
                   {workout.week && (
                     <Badge variant="outline">Week {workout.week}</Badge>
                   )}

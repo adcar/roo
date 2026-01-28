@@ -211,6 +211,111 @@ export default function ProgramForm({
     }));
   };
 
+  // Link two exercises together as a superset
+  const linkExercises = (
+    dayId: string,
+    week: 'A' | 'B',
+    index1: number,
+    index2: number
+  ) => {
+    setDays(days.map(day => {
+      if (day.id !== dayId) return day;
+
+      const weekKey = week === 'A' ? 'weekA' : 'weekB';
+      const exercises = [...day[weekKey]];
+      const ex1 = exercises[index1];
+      const ex2 = exercises[index2];
+
+      if (!ex1 || !ex2) return day;
+
+      // If both already have the same superset ID, do nothing
+      if (ex1.supersetId && ex1.supersetId === ex2.supersetId) {
+        return day;
+      }
+
+      // Determine the superset ID to use
+      let supersetId: string;
+      
+      if (ex1.supersetId && ex2.supersetId) {
+        // Both are in different supersets - merge them into ex1's superset
+        const oldSupersetId = ex2.supersetId;
+        supersetId = ex1.supersetId;
+        // Update all exercises that had ex2's superset ID
+        return {
+          ...day,
+          [weekKey]: exercises.map(ex => 
+            ex.supersetId === oldSupersetId 
+              ? { ...ex, supersetId } 
+              : ex
+          ),
+        };
+      } else if (ex1.supersetId) {
+        // ex1 is in a superset, add ex2 to it
+        supersetId = ex1.supersetId;
+      } else if (ex2.supersetId) {
+        // ex2 is in a superset, add ex1 to it
+        supersetId = ex2.supersetId;
+      } else {
+        // Neither is in a superset, create a new one
+        supersetId = `ss-${Date.now()}`;
+      }
+
+      return {
+        ...day,
+        [weekKey]: exercises.map((ex, idx) => {
+          if (idx === index1 || idx === index2) {
+            return { ...ex, supersetId };
+          }
+          return ex;
+        }),
+      };
+    }));
+  };
+
+  // Unlink an exercise from its superset
+  const unlinkExercise = (
+    dayId: string,
+    week: 'A' | 'B',
+    exerciseIndex: number
+  ) => {
+    setDays(days.map(day => {
+      if (day.id !== dayId) return day;
+
+      const weekKey = week === 'A' ? 'weekA' : 'weekB';
+      const exercises = [...day[weekKey]];
+      const exercise = exercises[exerciseIndex];
+
+      if (!exercise?.supersetId) return day;
+
+      const supersetId = exercise.supersetId;
+      
+      // Count how many exercises are in this superset
+      const supersetCount = exercises.filter(ex => ex.supersetId === supersetId).length;
+
+      if (supersetCount <= 2) {
+        // If only 2 exercises in superset, remove the superset entirely
+        return {
+          ...day,
+          [weekKey]: exercises.map(ex => 
+            ex.supersetId === supersetId 
+              ? { ...ex, supersetId: undefined } 
+              : ex
+          ),
+        };
+      } else {
+        // More than 2 exercises, just remove this one from the superset
+        return {
+          ...day,
+          [weekKey]: exercises.map((ex, idx) => 
+            idx === exerciseIndex 
+              ? { ...ex, supersetId: undefined } 
+              : ex
+          ),
+        };
+      }
+    }));
+  };
+
   const getExerciseName = (exerciseId: string) => {
     return exercises.find(ex => ex.id === exerciseId)?.name || 'Unknown Exercise';
   };
@@ -442,7 +547,7 @@ export default function ProgramForm({
         </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <DayTabs
+            <DayTabs
             days={days}
             activeTab={activeTab || (days.length === 0 ? 'add-day' : '')}
             onTabChange={(value) => {
@@ -468,6 +573,8 @@ export default function ProgramForm({
             newDayName={newDayName}
             onNewDayNameChange={setNewDayName}
             isSplit={isSplit}
+            onLinkExercises={linkExercises}
+            onUnlinkExercise={unlinkExercise}
           />
         </DragDropContext>
 

@@ -60,7 +60,7 @@ function WorkoutDayButton({
       data-range-middle={modifiers.range_middle}
       data-has-workout={hasWorkout}
       className={cn(
-        "relative flex aspect-square w-full min-h-0 h-auto max-w-full flex-col items-start justify-start gap-0.5 md:gap-1 p-1 md:p-1.5 lg:p-2 text-left font-normal transition-all overflow-hidden",
+        "relative flex w-full h-full flex-col items-start justify-start gap-0.5 md:gap-1 p-1 md:p-1.5 lg:p-2 text-left font-normal transition-all overflow-hidden",
         "hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]",
         "focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
         isToday && "bg-accent/50 font-semibold ring-2 ring-primary/20",
@@ -75,23 +75,23 @@ function WorkoutDayButton({
       {...props}
     >
       <span className={cn(
-        "text-[10px] md:text-xs lg:text-sm font-semibold leading-none",
+        "text-[10px] md:text-xs lg:text-sm font-semibold leading-none flex-shrink-0",
         isToday && !modifiers.selected && "text-primary",
         modifiers.selected && "text-foreground"
       )}>
         {day.date.getDate()}
       </span>
       {hasWorkout && workoutData && (
-        <div className="flex-1 flex flex-col justify-start w-full gap-0.5 overflow-hidden mt-1">
+        <div className="flex-1 min-h-0 flex flex-col justify-start w-full gap-0.5 overflow-hidden mt-1">
           <div className={cn(
-            "text-[8px] md:text-[10px] font-semibold truncate leading-tight",
+            "text-[8px] md:text-[10px] font-semibold truncate leading-tight flex-shrink-0",
             modifiers.selected ? "text-foreground" : "text-primary"
           )}>
             {workoutData.workoutDetails[0]?.programName || `${workoutData.workouts} workout${workoutData.workouts > 1 ? 's' : ''}`}
           </div>
           {workoutData.workoutDetails[0]?.dayName && (
             <div className={cn(
-              "text-[7px] md:text-[9px] truncate leading-tight font-medium",
+              "text-[7px] md:text-[9px] truncate leading-tight font-medium flex-shrink-0",
               modifiers.selected ? "text-foreground/80" : "text-primary/80"
             )}>
               {workoutData.workoutDetails[0].dayName}
@@ -102,7 +102,7 @@ function WorkoutDayButton({
           )}
           {workoutData.workouts > 1 && (
             <div className={cn(
-              "text-[7px] md:text-[9px] font-semibold mt-0.5",
+              "text-[7px] md:text-[9px] font-semibold mt-0.5 flex-shrink-0",
               modifiers.selected ? "text-foreground/70" : "text-primary/70"
             )}>
               +{workoutData.workouts - 1} more
@@ -208,17 +208,17 @@ export function WorkoutCalendar({
           classNames={{
             root: "w-full",
             months: "w-full",
-            month: "w-full",
+            month: "w-full flex flex-col gap-1",
             nav: "hidden",
             month_caption: "hidden",
             caption_label: "hidden",
             button_previous: "hidden",
             button_next: "hidden",
-            table: "w-full border-separate border-spacing-0.5 md:border-spacing-1 lg:border-spacing-1.5 table-fixed",
-            weekdays: "w-full",
-            weekday: "text-center text-[10px] md:text-xs font-semibold text-muted-foreground py-1 md:py-2 lg:py-3 px-0.5 md:px-1 flex-1 min-w-0",
-            week: "w-full",
-            day: "w-[14.28%] p-0 align-top",
+            table: "w-full border-collapse",
+            weekdays: "grid grid-cols-7 gap-0.5 md:gap-1 lg:gap-1.5 w-full",
+            weekday: "text-center text-[10px] md:text-xs font-semibold text-muted-foreground py-1 md:py-2 lg:py-3",
+            week: "grid grid-cols-7 gap-0.5 md:gap-1 lg:gap-1.5 w-full",
+            day: "aspect-square p-0 overflow-hidden",
           }}
           components={{
             DayButton: (props) => {
