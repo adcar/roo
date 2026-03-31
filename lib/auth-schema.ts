@@ -1,6 +1,5 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-// Better Auth required tables
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
   name: text('name'),
@@ -51,4 +50,3 @@ export const verification = sqliteTable('verification', {
   createdAt: integer('createdAt', { mode: 'timestamp' }),
   updatedAt: integer('updatedAt', { mode: 'timestamp' }),
 });
-

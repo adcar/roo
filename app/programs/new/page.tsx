@@ -1,32 +1,26 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Program } from '@/types/exercise';
-import ProgramForm from '@/components/ProgramForm';
+import type { Program } from '@/types/exercise';
+import ProgramForm from '@/components/program-form';
 
 export default function NewProgramPage() {
   const router = useRouter();
 
-  const handleSave = async (programData: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const program: Program = {
+  const handleSave = async (data: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const program = {
       id: Date.now().toString(),
-      ...programData,
+      ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
-    await fetch('/api/programs', {
+    const res = await fetch('/api/programs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(program),
     });
+    if (res.ok) router.push('/programs');
   };
 
-  return (
-    <ProgramForm
-      onSave={handleSave}
-      cancelUrl="/"
-      title="Create New Program"
-    />
-  );
+  return <ProgramForm onSave={handleSave} cancelUrl="/programs" title="New Program" />;
 }

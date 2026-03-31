@@ -1,77 +1,56 @@
 import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { getUserId } from '@/lib/auth-server';
 
 export async function GET() {
   try {
     const userId = await getUserId();
-    const db = await getDb();
-    
-    const settings = await db
-      .select()
+    const db = getDb();
+
+    const rows = await db
+      .select({ weekMapping: schema.userSettings.weekMapping })
       .from(schema.userSettings)
-      .where(eq(schema.userSettings.userId, userId))
-      .limit(1);
+      .where(eq(schema.userSettings.userId, userId));
 
-    // If no settings exist, return default
-    if (settings.length === 0) {
-      return NextResponse.json({ weekMapping: 'oddA' });
-    }
-
-    return NextResponse.json({ weekMapping: settings[0].weekMapping });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error fetching week mapping:', error);
-    return NextResponse.json({ error: 'Failed to fetch week mapping' }, { status: 500 });
+    if (!rows.length) return NextResponse.json({ weekMapping: 'oddA' });
+    return NextResponse.json({ weekMapping: rows[0].weekMapping });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
-    const { weekMapping } = await request.json();
-
-    if (weekMapping !== 'oddA' && weekMapping !== 'oddB') {
-      return NextResponse.json({ error: 'Invalid week mapping value' }, { status: 400 });
-    }
-
-    const db = await getDb();
+    const db = getDb();
+    const body = await request.json();
     const now = new Date().toISOString();
 
-    // Try to update existing settings
+    if (!body.weekMapping) return NextResponse.json({ error: 'Missing weekMapping' }, { status: 400 });
+
     const existing = await db
       .select()
       .from(schema.userSettings)
-      .where(eq(schema.userSettings.userId, userId))
-      .limit(1);
+      .where(eq(schema.userSettings.userId, userId));
 
-    if (existing.length > 0) {
+    if (existing.length) {
       await db
         .update(schema.userSettings)
-        .set({
-          weekMapping,
-          updatedAt: now,
-        })
+        .set({ weekMapping: body.weekMapping, updatedAt: now })
         .where(eq(schema.userSettings.userId, userId));
     } else {
-      // Insert new settings
       await db.insert(schema.userSettings).values({
         userId,
-        weekMapping,
+        weekMapping: body.weekMapping,
         updatedAt: now,
       });
     }
 
-    return NextResponse.json({ weekMapping });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error updating week mapping:', error);
-    return NextResponse.json({ error: 'Failed to update week mapping' }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

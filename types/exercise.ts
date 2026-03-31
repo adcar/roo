@@ -2,14 +2,14 @@ export interface Exercise {
   id: string;
   name: string;
   description?: string;
-  force: "pull" | "push" | "static" | null;
-  level: "beginner" | "intermediate" | "expert";
-  mechanic: "compound" | "isolation" | null;
+  force: 'pull' | 'push' | 'static' | null;
+  level: 'beginner' | 'intermediate' | 'expert';
+  mechanic: 'compound' | 'isolation' | null;
   equipment: string;
   primaryMuscles: string[];
   secondaryMuscles: string[];
   instructions: string[];
-  category: "strength" | "stretching" | "plyometrics" | "strongman" | "powerlifting" | "cardio" | "olympic weightlifting";
+  category: 'strength' | 'stretching' | 'plyometrics' | 'strongman' | 'powerlifting' | 'cardio' | 'olympic weightlifting';
   images: string[];
   isCustom?: boolean;
 }
@@ -19,15 +19,15 @@ export interface ProgramExercise {
   sets?: number;
   reps?: number;
   weight?: number;
-  distance?: number; // Distance in miles for cardio exercises
+  distance?: number;
   notes?: string;
-  order?: number; // Explicit order field for database storage
-  supersetId?: string; // Groups exercises into supersets - exercises with the same supersetId are performed back-to-back
+  order?: number;
+  supersetId?: string;
 }
 
 export interface WorkoutDay {
   id: string;
-  name: string; // e.g., "Leg Day", "Pull Day", "Chest Day"
+  name: string;
   weekA: ProgramExercise[];
   weekB: ProgramExercise[];
 }
@@ -36,8 +36,8 @@ export interface Program {
   id: string;
   name: string;
   days: WorkoutDay[];
-  isSplit?: boolean; // If true, program alternates between week A and B. Defaults to true for backward compatibility
-  durationWeeks?: number; // Optional duration in weeks. If undefined, program duration is unlimited
+  isSplit?: boolean;
+  durationWeeks?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,7 +59,7 @@ export interface ExerciseLog {
 export interface SetLog {
   reps?: number;
   weight?: number;
-  distance?: number; // Distance in miles for cardio exercises
+  distance?: number;
   repWeights?: number[];
   completed: boolean;
 }

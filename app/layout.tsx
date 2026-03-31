@@ -1,53 +1,46 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navigation from "@/components/Navigation";
-import { Toaster } from "@/components/ui/toast";
-import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/components/AuthProvider";
-import { LoadingProvider } from "@/components/LoadingProvider";
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/components/auth-provider';
+import { BottomNav } from '@/components/navigation';
+import { Toaster } from '@/components/ui/toast';
+import './globals.css';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
-  title: "’Roo",
-  description: "Build and track your workout programs",
-  icons: {
-    icon: '/logo.svg',
-  },
+  title: { default: "'Roo", template: "%s | 'Roo" },
+  description: 'Build and track your workout programs',
+  icons: { icon: '/logo.svg' },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#faf9f7' },
+    { media: '(prefers-color-scheme: dark)', color: '#2d2d2d' },
+  ],
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-16 md:pb-0`}
-      >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <LoadingProvider>
-            <AuthProvider>
-              <Navigation />
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <body className="font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <main className="mx-auto min-h-dvh max-w-lg pb-20">
               {children}
-              <Toaster />
-            </AuthProvider>
-          </LoadingProvider>
+            </main>
+            <BottomNav />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

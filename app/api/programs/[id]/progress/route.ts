@@ -1,56 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
-
-// GET: Check if there's any in-progress workout for a program
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const db = await getDb();
+    const userId = await getUserId();
     const { id } = await params;
-    const programId = id;
+    const db = getDb();
 
-    const progress = await db
+    const program = await db
       .select()
-      .from(schema.workoutProgress)
-      .where(
-        eq(schema.workoutProgress.userId, session.user.id)
-      );
+      .from(schema.programs)
+      .where(and(eq(schema.programs.id, id), eq(schema.programs.userId, userId)));
 
-    // Filter for this program
-    const programProgress = progress.filter(p => p.programId === programId);
+    if (!program.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    if (programProgress.length === 0) {
-      return NextResponse.json({ hasProgress: false, progress: [] });
-    }
+    const days = JSON.parse(program[0].days);
+    const durationWeeks = program[0].durationWeeks ?? 1;
+    const totalWorkouts = days.length * durationWeeks;
+
+    const logs = await db
+      .select()
+      .from(schema.workoutLogs)
+      .where(and(eq(schema.workoutLogs.programId, id), eq(schema.workoutLogs.userId, userId)));
+
+    const completedWorkouts = logs.length;
 
     return NextResponse.json({
-      hasProgress: true,
-      progress: programProgress.map(p => ({
-        id: p.id,
-        dayId: p.dayId,
-        week: p.week,
-        currentExerciseIndex: p.currentExerciseIndex,
-        updatedAt: p.updatedAt,
-      }))
+      programId: id,
+      totalWorkouts,
+      completedWorkouts,
+      percentage: totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0,
     });
-  } catch (error) {
-    console.error('Error checking workout progress:', error);
-    return NextResponse.json({ error: 'Failed to check progress' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

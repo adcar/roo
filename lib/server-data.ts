@@ -1,8 +1,9 @@
+import 'server-only';
 import { getDb, schema } from '@/lib/db';
 import { getUserId } from '@/lib/auth-server';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { Program, WorkoutLog } from '@/types/exercise';
 import { createClient } from '@libsql/client';
+import type { Program, WorkoutLog } from '@/types/exercise';
 
 function normalizeExerciseOrder(days: any[]) {
   return days.map(day => ({
@@ -15,27 +16,20 @@ function normalizeExerciseOrder(days: any[]) {
 export async function getPrograms(): Promise<Program[]> {
   try {
     const userId = await getUserId();
-    const db = await getDb();
-    const allPrograms = await db
+    const db = getDb();
+    const rows = await db
       .select()
       .from(schema.programs)
       .where(eq(schema.programs.userId, userId));
 
-    const programs = allPrograms.map(p => {
-      const days = JSON.parse(p.days);
-      return {
-        ...p,
-        days: normalizeExerciseOrder(days),
-        isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined,
-        durationWeeks: p.durationWeeks !== null ? p.durationWeeks : undefined,
-      };
-    });
-
-    return programs as Program[];
+    return rows.map(p => ({
+      ...p,
+      days: normalizeExerciseOrder(JSON.parse(p.days)),
+      isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined,
+      durationWeeks: p.durationWeeks ?? undefined,
+    })) as Program[];
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return [];
-    }
+    if (error instanceof Error && error.message === 'Unauthorized') return [];
     console.error('Error fetching programs:', error);
     return [];
   }
@@ -44,7 +38,7 @@ export async function getPrograms(): Promise<Program[]> {
 export async function getWorkoutLogs(): Promise<WorkoutLog[]> {
   try {
     const userId = await getUserId();
-    const db = await getDb();
+    const db = getDb();
     const logs = await db
       .select()
       .from(schema.workoutLogs)
@@ -55,9 +49,7 @@ export async function getWorkoutLogs(): Promise<WorkoutLog[]> {
       exercises: JSON.parse(log.exercises),
     })) as WorkoutLog[];
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return [];
-    }
+    if (error instanceof Error && error.message === 'Unauthorized') return [];
     console.error('Error fetching workout logs:', error);
     return [];
   }
@@ -66,21 +58,17 @@ export async function getWorkoutLogs(): Promise<WorkoutLog[]> {
 export async function getWeekMapping(): Promise<'oddA' | 'oddB'> {
   try {
     const userId = await getUserId();
-    const db = await getDb();
+    const db = getDb();
     const settings = await db
       .select()
       .from(schema.userSettings)
       .where(eq(schema.userSettings.userId, userId))
       .limit(1);
 
-    if (settings.length === 0) {
-      return 'oddA';
-    }
-
-    return (settings[0].weekMapping === 'oddA' || settings[0].weekMapping === 'oddB') 
-      ? settings[0].weekMapping 
-      : 'oddA';
-  } catch (error) {
+    if (settings.length === 0) return 'oddA';
+    const wm = settings[0].weekMapping;
+    return wm === 'oddA' || wm === 'oddB' ? wm : 'oddA';
+  } catch {
     return 'oddA';
   }
 }
@@ -88,22 +76,103 @@ export async function getWeekMapping(): Promise<'oddA' | 'oddB'> {
 export async function getInProgressWorkouts(): Promise<Record<string, { week: string; updatedAt: string }>> {
   try {
     const userId = await getUserId();
-    const db = await getDb();
+    const db = getDb();
     const progress = await db
       .select()
       .from(schema.workoutProgress)
       .where(eq(schema.workoutProgress.userId, userId));
 
-    const progressMap: Record<string, { week: string; updatedAt: string }> = {};
-    progress.forEach(p => {
-      const key = `${p.programId}-${p.dayId}`;
-      progressMap[key] = { week: p.week, updatedAt: p.updatedAt };
-    });
-
-    return progressMap;
-  } catch (error) {
+    const map: Record<string, { week: string; updatedAt: string }> = {};
+    for (const p of progress) {
+      map[`${p.programId}-${p.dayId}`] = { week: p.week, updatedAt: p.updatedAt };
+    }
+    return map;
+  } catch {
     return {};
   }
+}
+
+/** Fetch programs + weekMapping + inProgress in parallel */
+export async function getProgramsPageData() {
+  const [programs, weekMapping, inProgress] = await Promise.all([
+    getPrograms(),
+    getWeekMapping(),
+    getInProgressWorkouts(),
+  ]);
+  return { programs, weekMapping, inProgress };
+}
+
+// ---- Leaderboard / Streaks ----
+
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayNum = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - dayNum);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function getWeekKey(date: Date): string {
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return `${localDate.getFullYear()}-W${getISOWeekNumber(localDate).toString().padStart(2, '0')}`;
+}
+
+function getPreviousWeekKey(weekKey: string): string {
+  const [yearStr, weekStr] = weekKey.split('-W');
+  let year = parseInt(yearStr);
+  let weekNum = parseInt(weekStr);
+  weekNum--;
+  if (weekNum < 1) { weekNum = 52; year--; }
+  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+function calculateStreaks(workoutDates: string[]): { currentStreak: number; longestStreak: number } {
+  if (workoutDates.length === 0) return { currentStreak: 0, longestStreak: 0 };
+
+  const weekMap = new Map<string, number>();
+  for (const dateStr of workoutDates) {
+    const wk = getWeekKey(new Date(dateStr));
+    weekMap.set(wk, (weekMap.get(wk) || 0) + 1);
+  }
+
+  const qualifyingWeeks = Array.from(weekMap.entries())
+    .filter(([, count]) => count >= 2)
+    .map(([wk]) => wk)
+    .sort();
+
+  if (qualifyingWeeks.length === 0) return { currentStreak: 0, longestStreak: 0 };
+
+  let longestStreak = 1;
+  let run = 1;
+  for (let i = 1; i < qualifyingWeeks.length; i++) {
+    if (qualifyingWeeks[i - 1] === getPreviousWeekKey(qualifyingWeeks[i])) {
+      run++;
+      longestStreak = Math.max(longestStreak, run);
+    } else {
+      run = 1;
+    }
+  }
+
+  const currentWeekKey = getWeekKey(new Date());
+  let checkWeek = getPreviousWeekKey(currentWeekKey);
+  let mostRecentQualifying: string | null = null;
+  for (let i = 0; i < 52; i++) {
+    if (qualifyingWeeks.includes(checkWeek)) { mostRecentQualifying = checkWeek; break; }
+    checkWeek = getPreviousWeekKey(checkWeek);
+  }
+
+  let currentStreak = 0;
+  if (mostRecentQualifying) {
+    currentStreak = 1;
+    let cw = mostRecentQualifying;
+    for (let i = 0; i < 100; i++) {
+      const prev = getPreviousWeekKey(cw);
+      if (qualifyingWeeks.includes(prev)) { currentStreak++; cw = prev; }
+      else break;
+    }
+  }
+
+  return { currentStreak, longestStreak };
 }
 
 interface LeaderboardEntry {
@@ -117,294 +186,83 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-// Streak calculation helpers
-function getISOWeekNumber(date: Date): number {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayNum = d.getDay() || 7;
-  d.setDate(d.getDate() + 4 - dayNum);
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
-
-function getWeekKey(date: Date): string {
-  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const year = localDate.getFullYear();
-  const weekNum = getISOWeekNumber(localDate);
-  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
-}
-
-function getPreviousWeekKey(weekKey: string): string {
-  const [yearStr, weekStr] = weekKey.split('-W');
-  let year = parseInt(yearStr);
-  let weekNum = parseInt(weekStr);
-  
-  weekNum--;
-  if (weekNum < 1) {
-    weekNum = 52;
-    year--;
-  }
-  
-  return `${year}-W${weekNum.toString().padStart(2, '0')}`;
-}
-
-function calculateStreaks(workoutDates: string[]): { currentStreak: number; longestStreak: number } {
-  if (workoutDates.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
-  }
-
-  const weekMap = new Map<string, number>();
-  
-  workoutDates.forEach(dateStr => {
-    const date = new Date(dateStr);
-    const weekKey = getWeekKey(date);
-    weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
-  });
-
-  const qualifyingWeeks = Array.from(weekMap.entries())
-    .filter(([_, count]) => count >= 2)
-    .map(([weekKey, _]) => weekKey)
-    .sort();
-
-  if (qualifyingWeeks.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
-  }
-
-  // Calculate longest streak
-  let longestStreak = 1;
-  let currentLongest = 1;
-  
-  for (let i = 1; i < qualifyingWeeks.length; i++) {
-    const prevWeek = qualifyingWeeks[i - 1];
-    const currWeek = qualifyingWeeks[i];
-    const expectedPrevWeek = getPreviousWeekKey(currWeek);
-    
-    if (prevWeek === expectedPrevWeek) {
-      currentLongest++;
-      longestStreak = Math.max(longestStreak, currentLongest);
-    } else {
-      currentLongest = 1;
-    }
-  }
-
-  // Calculate current streak
-  const today = new Date();
-  const currentWeekKey = getWeekKey(today);
-  const currentWeekCount = weekMap.get(currentWeekKey) || 0;
-  
-  // Find the most recent completed qualifying week (exclude current week)
-  let mostRecentQualifyingWeek: string | null = null;
-  
-  let checkWeek = getPreviousWeekKey(currentWeekKey);
-  for (let i = 0; i < 52; i++) {
-    if (qualifyingWeeks.includes(checkWeek)) {
-      mostRecentQualifyingWeek = checkWeek;
-      break;
-    }
-    checkWeek = getPreviousWeekKey(checkWeek);
-  }
-
-  let currentStreak = 0;
-  
-  if (mostRecentQualifyingWeek) {
-    currentStreak = 1;
-    let checkWeek = mostRecentQualifyingWeek;
-    
-    for (let i = 0; i < 100; i++) {
-      const prevWeek = getPreviousWeekKey(checkWeek);
-      if (qualifyingWeeks.includes(prevWeek)) {
-        currentStreak++;
-        checkWeek = prevWeek;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { currentStreak, longestStreak };
-}
-
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
-    const db = await getDb();
-    
-    // Get start and end of current month
+    const db = getDb();
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    
-    const startOfMonthISO = startOfMonth.toISOString();
-    const endOfMonthISO = endOfMonth.toISOString();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
 
-    // Fetch all workout logs for current month
     const logs = await db
-      .select({
-        userId: schema.workoutLogs.userId,
-        exercises: schema.workoutLogs.exercises,
-        date: schema.workoutLogs.date,
-      })
+      .select({ userId: schema.workoutLogs.userId, exercises: schema.workoutLogs.exercises, date: schema.workoutLogs.date })
       .from(schema.workoutLogs)
-      .where(
-        and(
-          gte(schema.workoutLogs.date, startOfMonthISO),
-          lte(schema.workoutLogs.date, endOfMonthISO)
-        ) as any
-      );
+      .where(and(gte(schema.workoutLogs.date, startOfMonth), lte(schema.workoutLogs.date, endOfMonth)) as any);
 
-    // Count unique workout days per user (max 1 workout per day counts)
-    // Group by userId and date (normalized to just the day, ignoring time)
     const userWorkoutDays = new Map<string, Set<string>>();
-    
     for (const log of logs) {
       try {
         const exercises = JSON.parse(log.exercises);
-        // Any workout counts for the leaderboard (even with just 1 exercise)
         if (Array.isArray(exercises) && exercises.length >= 1) {
-          // Normalize date to just the day (YYYY-MM-DD) to count unique days
-          // Extract date part from ISO string (YYYY-MM-DD) to avoid timezone issues
           const dayKey = log.date.split('T')[0];
-          
-          if (!userWorkoutDays.has(log.userId)) {
-            userWorkoutDays.set(log.userId, new Set());
-          }
+          if (!userWorkoutDays.has(log.userId)) userWorkoutDays.set(log.userId, new Set());
           userWorkoutDays.get(log.userId)!.add(dayKey);
         }
-      } catch (e) {
-        console.error('Error parsing exercises:', e);
-      }
+      } catch { /* skip bad data */ }
     }
 
-    // Convert Set sizes to counts
-    const userWorkoutCounts = new Map<string, number>();
-    userWorkoutDays.forEach((days, userId) => {
-      userWorkoutCounts.set(userId, days.size);
-    });
+    const qualifyingUsers = Array.from(userWorkoutDays.entries())
+      .filter(([, days]) => days.size >= 1)
+      .map(([userId, days]) => ({ userId, count: days.size }));
 
-    // Filter users with at least 1 qualifying workout
-    const qualifyingUsers = Array.from(userWorkoutCounts.entries())
-      .filter(([_, count]) => count >= 1)
-      .map(([userId, count]) => ({ userId, count }));
+    if (qualifyingUsers.length === 0) return [];
 
-    if (qualifyingUsers.length === 0) {
-      return [];
-    }
-
-    // Fetch user details for qualifying users
     const userIds = new Set(qualifyingUsers.map(u => u.userId));
-    
     const url = process.env.TURSO_DATABASE_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN;
-    
-    if (!url) {
-      throw new Error('TURSO_DATABASE_URL environment variable is not set');
-    }
-    
-    const client = createClient({
-      url,
-      authToken,
-    });
-    
-    // Fetch user details
-    const allUsersResult = await client.execute({
-      sql: 'SELECT id, username, email FROM user',
-    });
-    
-    // Fetch user settings for inspiration quotes
-    const userIdsArray = Array.from(userIds);
-    let settingsMap = new Map<string, string | null>();
-    
-    if (userIdsArray.length > 0) {
-      const placeholders = userIdsArray.map(() => '?').join(',');
-      const settingsResult = await client.execute({
-        sql: `SELECT user_id, inspiration_quote FROM user_settings WHERE user_id IN (${placeholders})`,
-        args: userIdsArray,
-      });
-      
-      settingsMap = new Map(
-        settingsResult.rows.map((row: any) => [
-          row.user_id as string,
-          row.inspiration_quote as string | null,
-        ])
-      );
-    }
-    
-    const allUsers = allUsersResult.rows
-      .filter((row: any) => userIds.has(row.id))
-      .map((row: any) => ({
-        id: row.id as string,
-        username: row.username as string | null,
-        email: row.email as string,
-        inspirationQuote: settingsMap.get(row.id) || null,
-      }));
+    if (!url) throw new Error('TURSO_DATABASE_URL is not set');
+    const client = createClient({ url, authToken });
 
+    // Parallel: fetch users, settings, and all logs for streaks
+    const [allUsersResult, allLogsForStreaks] = await Promise.all([
+      client.execute({ sql: 'SELECT id, username, email FROM user' }),
+      db.select({ userId: schema.workoutLogs.userId, date: schema.workoutLogs.date }).from(schema.workoutLogs),
+    ]);
+
+    const userIdsArray = Array.from(userIds);
+    const placeholders = userIdsArray.map(() => '?').join(',');
+    const settingsResult = userIdsArray.length > 0
+      ? await client.execute({ sql: `SELECT user_id, inspiration_quote FROM user_settings WHERE user_id IN (${placeholders})`, args: userIdsArray })
+      : { rows: [] };
+
+    const settingsMap = new Map(settingsResult.rows.map((r: any) => [r.user_id as string, r.inspiration_quote as string | null]));
     const userMap = new Map(
-      allUsers.map(user => [
-        user.id,
-        {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          inspirationQuote: user.inspirationQuote,
-        },
-      ])
+      allUsersResult.rows
+        .filter((r: any) => userIds.has(r.id))
+        .map((r: any) => [r.id as string, { username: r.username as string | null, email: r.email as string, inspirationQuote: settingsMap.get(r.id as string) || null }])
     );
 
-    // Calculate streaks for all qualifying users
-    const allLogsForStreaks = await db
-      .select({
-        userId: schema.workoutLogs.userId,
-        date: schema.workoutLogs.date,
-      })
-      .from(schema.workoutLogs);
-
     const userWorkouts = new Map<string, string[]>();
-    allLogsForStreaks.forEach(log => {
+    for (const log of allLogsForStreaks) {
       if (userIds.has(log.userId)) {
-        if (!userWorkouts.has(log.userId)) {
-          userWorkouts.set(log.userId, []);
-        }
+        if (!userWorkouts.has(log.userId)) userWorkouts.set(log.userId, []);
         userWorkouts.get(log.userId)!.push(log.date);
       }
-    });
+    }
 
-    const streaksMap = new Map<string, { currentStreak: number; longestStreak: number }>();
-    userWorkouts.forEach((dates, userId) => {
-      const streakData = calculateStreaks(dates);
-      streaksMap.set(userId, streakData);
-    });
-
-    // Build leaderboard entries
     const leaderboard: LeaderboardEntry[] = qualifyingUsers
       .map(({ userId, count }) => {
-        const user = userMap.get(userId);
-        if (!user) return null;
-        
-        const streakData = streaksMap.get(userId) || { currentStreak: 0, longestStreak: 0 };
-        
-        return {
-          userId,
-          username: user.username,
-          email: user.email,
-          inspirationQuote: user.inspirationQuote,
-          workoutCount: count,
-          currentStreak: streakData.currentStreak,
-          longestStreak: streakData.longestStreak,
-          rank: 0,
-        };
+        const u = userMap.get(userId);
+        if (!u) return null;
+        const streaks = calculateStreaks(userWorkouts.get(userId) || []);
+        return { userId, username: u.username, email: u.email, inspirationQuote: u.inspirationQuote, workoutCount: count, ...streaks, rank: 0 };
       })
-      .filter((entry): entry is LeaderboardEntry => entry !== null)
+      .filter((e): e is LeaderboardEntry => e !== null)
       .sort((a, b) => b.workoutCount - a.workoutCount);
 
-    // Calculate ranks with proper tie handling
     let currentRank = 1;
     for (let i = 0; i < leaderboard.length; i++) {
-      if (i === 0) {
-        leaderboard[i].rank = 1;
-      } else {
-        if (leaderboard[i].workoutCount !== leaderboard[i - 1].workoutCount) {
-          currentRank = i + 1;
-        }
-        leaderboard[i].rank = currentRank;
-      }
+      if (i > 0 && leaderboard[i].workoutCount !== leaderboard[i - 1].workoutCount) currentRank = i + 1;
+      leaderboard[i].rank = i === 0 ? 1 : currentRank;
     }
 
     return leaderboard;
@@ -413,4 +271,3 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     return [];
   }
 }
-

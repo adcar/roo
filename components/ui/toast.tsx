@@ -1,99 +1,66 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface Toast {
+interface Toast {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
-  variant?: 'default' | 'success' | 'destructive';
+  variant?: 'default' | 'destructive' | 'success';
 }
 
-let toastId = 0;
-const toasts: Toast[] = [];
-const listeners: Set<(toasts: Toast[]) => void> = new Set();
+let toastListeners: Array<(toasts: Toast[]) => void> = [];
+let toasts: Toast[] = [];
 
 function notify() {
-  listeners.forEach(listener => listener([...toasts]));
+  toastListeners.forEach(fn => fn([...toasts]));
 }
 
-function removeToast(id: string) {
-  const index = toasts.findIndex(t => t.id === id);
-  if (index > -1) {
-    toasts.splice(index, 1);
-    notify();
-  }
-}
-
-export function toast(title: string, options?: { description?: string; variant?: Toast['variant'] }) {
-  const id = (toastId++).toString();
-  const newToast: Toast = {
-    id,
-    title,
-    description: options?.description,
-    variant: options?.variant || 'default',
-  };
-  
-  toasts.push(newToast);
+export function toast({ title, description, variant = 'default' }: Omit<Toast, 'id'>) {
+  const id = Math.random().toString(36).slice(2);
+  toasts.push({ id, title, description, variant });
   notify();
-  
   setTimeout(() => {
-    const index = toasts.findIndex(t => t.id === id);
-    if (index > -1) {
-      toasts.splice(index, 1);
-      notify();
-    }
+    toasts = toasts.filter(t => t.id !== id);
+    notify();
   }, 3000);
-  
-  return id;
-}
-
-export function useToast() {
-  const [toastList, setToastList] = useState<Toast[]>([]);
-  
-  useEffect(() => {
-    const listener = (newToasts: Toast[]) => {
-      setToastList(newToasts);
-    };
-    listeners.add(listener);
-    listener([...toasts]);
-    
-    return () => {
-      listeners.delete(listener);
-    };
-  }, []);
-  
-  return toastList;
 }
 
 export function Toaster() {
-  const toastList = useToast();
-  
-  if (toastList.length === 0) return null;
-  
+  const [items, setItems] = React.useState<Toast[]>([]);
+
+  React.useEffect(() => {
+    toastListeners.push(setItems);
+    return () => {
+      toastListeners = toastListeners.filter(fn => fn !== setItems);
+    };
+  }, []);
+
+  if (items.length === 0) return null;
+
   return (
-    <div className="fixed bottom-0 right-0 z-[100] flex flex-col gap-2 p-4 max-w-[420px] w-full">
-      {toastList.map(toastItem => (
+    <div className="fixed bottom-20 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2 sm:bottom-6 sm:right-6 sm:left-auto sm:translate-x-0">
+      {items.map(t => (
         <div
-          key={toastItem.id}
+          key={t.id}
           className={cn(
-            "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 pr-8 shadow-lg transition-all",
-            toastItem.variant === 'success' && "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900 text-green-900 dark:text-green-100",
-            toastItem.variant === 'destructive' && "bg-destructive text-destructive-foreground",
-            toastItem.variant === 'default' && "bg-background border-border"
+            'flex items-center gap-3 rounded-xl border px-5 py-4 shadow-lg animate-in slide-in-from-bottom-5',
+            t.variant === 'destructive'
+              ? 'border-[var(--destructive)] bg-[var(--destructive)] text-[var(--destructive-foreground)]'
+              : t.variant === 'success'
+              ? 'border-[var(--success)] bg-[var(--success)] text-white'
+              : 'border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)]'
           )}
         >
-          <div className="flex-1 space-y-1">
-            <div className="text-sm font-semibold">{toastItem.title}</div>
-            {toastItem.description && (
-              <div className="text-sm opacity-90">{toastItem.description}</div>
-            )}
+          <div className="flex-1">
+            {t.title && <p className="text-sm font-semibold">{t.title}</p>}
+            {t.description && <p className="text-sm opacity-90">{t.description}</p>}
           </div>
           <button
-            onClick={() => removeToast(toastItem.id)}
-            className="absolute right-2 top-2 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100"
+            onClick={() => { toasts = toasts.filter(x => x.id !== t.id); notify(); }}
+            className="shrink-0 rounded-full p-1.5 opacity-70 hover:opacity-100 touch-manipulation"
           >
             <X className="h-4 w-4" />
           </button>
@@ -102,4 +69,3 @@ export function Toaster() {
     </div>
   );
 }
-

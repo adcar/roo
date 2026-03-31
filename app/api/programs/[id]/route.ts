@@ -1,130 +1,82 @@
 import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
-import { getUserId } from '@/lib/auth-server';
 
-function normalizeExerciseOrder(days: any[]) {
-  return days.map(day => ({
-    ...day,
-    weekA: day.weekA?.map((ex: any, idx: number) => ({ ...ex, order: ex.order ?? idx })) || [],
-    weekB: day.weekB?.map((ex: any, idx: number) => ({ ...ex, order: ex.order ?? idx })) || [],
-  }));
-}
-
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getUserId();
     const { id } = await params;
-    const db = await getDb();
-    const [program] = await db
+    const db = getDb();
+
+    const rows = await db
       .select()
       .from(schema.programs)
-      .where(and(
-        eq(schema.programs.id, id),
-        eq(schema.programs.userId, userId)
-      ) as any);
+      .where(and(eq(schema.programs.id, id), eq(schema.programs.userId, userId)));
 
-    if (!program) {
-      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
-    }
+    if (!rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const days = JSON.parse(program.days);
+    const p = rows[0];
+    const days = JSON.parse(p.days);
+    const normalizedDays = days.map((day: any) => ({
+      ...day,
+      exercises: (day.exercises ?? []).map((ex: any, i: number) => ({
+        ...ex,
+        order: ex.order ?? i,
+      })),
+    }));
+
     return NextResponse.json({
-      ...program,
-      days: normalizeExerciseOrder(days),
-      isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined, // Convert integer to boolean, undefined if null
-      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined, // Convert integer to number, undefined if null
+      ...p,
+      days: normalizedDays,
+      isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined,
+      durationWeeks: p.durationWeeks ?? undefined,
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error fetching program:', error);
-    return NextResponse.json({ error: 'Failed to fetch program' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getUserId();
     const { id } = await params;
+    const db = getDb();
     const body = await request.json();
-    const db = await getDb();
+    const now = new Date().toISOString();
 
-    // Verify the program belongs to the user
-    const [existingProgram] = await db
-      .select()
-      .from(schema.programs)
-      .where(and(
-        eq(schema.programs.id, id),
-        eq(schema.programs.userId, userId)
-      ) as any);
-
-    if (!existingProgram) {
-      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
-    }
-
-    const program = {
-      name: body.name,
-      days: JSON.stringify(body.days),
-      isSplit: body.isSplit !== undefined ? (body.isSplit ? 1 : 0) : null,
-      durationWeeks: body.durationWeeks !== undefined ? body.durationWeeks : null,
-      updatedAt: new Date().toISOString(),
-    };
+    const updates: Record<string, any> = { updatedAt: now };
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.days !== undefined) updates.days = JSON.stringify(body.days);
+    if (body.isSplit !== undefined) updates.isSplit = body.isSplit ? 1 : 0;
+    if (body.durationWeeks !== undefined) updates.durationWeeks = body.durationWeeks;
 
     await db
       .update(schema.programs)
-      .set(program)
-      .where(and(
-        eq(schema.programs.id, id),
-        eq(schema.programs.userId, userId)
-      ) as any);
+      .set(updates)
+      .where(and(eq(schema.programs.id, id), eq(schema.programs.userId, userId)));
 
-    return NextResponse.json({
-      id,
-      ...program,
-      days: JSON.parse(program.days),
-      isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined,
-      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error updating program:', error);
-    return NextResponse.json({ error: 'Failed to update program' }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getUserId();
     const { id } = await params;
-    const db = await getDb();
-    
-    // Verify the program belongs to the user before deleting
+    const db = getDb();
+
     await db
       .delete(schema.programs)
-      .where(and(
-        eq(schema.programs.id, id),
-        eq(schema.programs.userId, userId)
-      ) as any);
-    
+      .where(and(eq(schema.programs.id, id), eq(schema.programs.userId, userId)));
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error deleting program:', error);
-    return NextResponse.json({ error: 'Failed to delete program' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

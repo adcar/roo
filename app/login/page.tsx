@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authClient } from '@/lib/auth-client';
+import { signIn } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Dumbbell } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,84 +18,67 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    if (!username || !password) return;
     setLoading(true);
+    setError('');
 
     try {
-      const result = await authClient.signIn.username({
-        username,
-        password,
-      });
-
+      const result = await signIn.username({ username, password });
       if (result.error) {
         setError(result.error.message || 'Login failed');
       } else {
-        // Redirect to home page after successful login
-        router.push('/');
-        router.refresh();
+        router.replace('/programs');
       }
-    } catch (err) {
-      setError('An unexpected error occurred');
-      console.error('Login error:', err);
+    } catch {
+      setError('Something went wrong');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 rounded-lg border bg-card p-8 shadow-lg">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <img 
-              src="/logo.svg" 
-              alt="'Roo Logo" 
-              className="h-16 w-16"
-            />
-            <h1 className="text-3xl font-bold">’Roo</h1>
+    <div className="flex min-h-dvh items-center justify-center px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center gap-3 pb-2">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)]">
+            <Dumbbell className="h-8 w-8 text-[var(--primary-foreground)]" />
           </div>
-          <p className="mt-2 text-muted-foreground">Sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              disabled={loading}
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+          <CardTitle className="text-2xl">Welcome to Roo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="Enter your username"
+              />
             </div>
-          )}
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
-          </Button>
-        </form>
-      </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-[var(--destructive)]">{error}</p>
+            )}
+            <Button type="submit" size="lg" disabled={loading || !username || !password}>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign In'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

@@ -1,170 +1,98 @@
 import { NextResponse } from 'next/server';
-import { getDb, schema } from '@/lib/db';
-import { eq, and, like } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth-server';
+import { getDb, schema } from '@/lib/db';
+import { eq, and } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
     const userId = await getUserId();
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const programId = searchParams.get('programId');
     const dayId = searchParams.get('dayId');
 
-    const db = await getDb();
-    let conditions = [eq(schema.workoutLogs.userId, userId)];
+    const conditions = [eq(schema.workoutLogs.userId, userId)];
+    if (programId) conditions.push(eq(schema.workoutLogs.programId, programId));
+    if (dayId) conditions.push(eq(schema.workoutLogs.dayId, dayId));
 
-    if (programId && dayId) {
-      conditions.push(
-        eq(schema.workoutLogs.programId, programId),
-        eq(schema.workoutLogs.dayId, dayId)
-      );
-    } else if (programId) {
-      conditions.push(eq(schema.workoutLogs.programId, programId));
-    }
-
-    const logs = await db
+    const rows = await db
       .select()
       .from(schema.workoutLogs)
-      .where(and(...conditions) as any);
+      .where(and(...conditions));
 
-    return NextResponse.json(
-      logs.map(log => ({
-        ...log,
-        exercises: JSON.parse(log.exercises),
-      }))
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error fetching workout logs:', error);
-    return NextResponse.json({ error: 'Failed to fetch workout logs' }, { status: 500 });
+    const logs = rows.map((r) => ({ ...r, exercises: JSON.parse(r.exercises) }));
+    return NextResponse.json(logs);
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const userId = await getUserId();
+    const db = getDb();
     const body = await request.json();
-    const db = await getDb();
+    const id = crypto.randomUUID();
 
-    const log = {
-      id: body.id || Date.now().toString(),
+    await db.insert(schema.workoutLogs).values({
+      id,
       programId: body.programId,
       dayId: body.dayId,
       week: body.week,
-      date: body.date || new Date().toISOString(),
+      date: body.date ?? new Date().toISOString(),
       exercises: JSON.stringify(body.exercises),
       userId,
-    };
-
-    await db.insert(schema.workoutLogs).values(log);
-
-    return NextResponse.json({
-      ...log,
-      exercises: JSON.parse(log.exercises),
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error creating workout log:', error);
-    return NextResponse.json({ error: 'Failed to create workout log' }, { status: 500 });
+
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
     const userId = await getUserId();
+    const db = getDb();
     const body = await request.json();
-    const db = await getDb();
 
-    if (!body.id) {
-      return NextResponse.json({ error: 'Workout log ID is required' }, { status: 400 });
-    }
+    if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    // Verify the workout log belongs to the user
-    const [existingLog] = await db
-      .select()
-      .from(schema.workoutLogs)
-      .where(and(
-        eq(schema.workoutLogs.id, body.id),
-        eq(schema.workoutLogs.userId, userId)
-      ) as any);
-
-    if (!existingLog) {
-      return NextResponse.json({ error: 'Workout log not found' }, { status: 404 });
-    }
-
-    // Update the workout log
-    const updatedLog = {
-      programId: body.programId || existingLog.programId,
-      dayId: body.dayId || existingLog.dayId,
-      week: body.week || existingLog.week,
-      date: body.date || existingLog.date,
-      exercises: JSON.stringify(body.exercises || JSON.parse(existingLog.exercises)),
-    };
+    const updates: Record<string, any> = {};
+    if (body.exercises !== undefined) updates.exercises = JSON.stringify(body.exercises);
+    if (body.date !== undefined) updates.date = body.date;
+    if (body.week !== undefined) updates.week = body.week;
 
     await db
       .update(schema.workoutLogs)
-      .set(updatedLog)
-      .where(and(
-        eq(schema.workoutLogs.id, body.id),
-        eq(schema.workoutLogs.userId, userId)
-      ) as any);
+      .set(updates)
+      .where(and(eq(schema.workoutLogs.id, body.id), eq(schema.workoutLogs.userId, userId)));
 
-    return NextResponse.json({
-      id: body.id,
-      ...updatedLog,
-      exercises: JSON.parse(updatedLog.exercises),
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error updating workout log:', error);
-    return NextResponse.json({ error: 'Failed to update workout log' }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const userId = await getUserId();
+    const db = getDb();
     const { searchParams } = new URL(request.url);
-    const logId = searchParams.get('id');
-    const date = searchParams.get('date');
+    const id = searchParams.get('id');
 
-    if (!logId && !date) {
-      return NextResponse.json({ error: 'Either id or date must be provided' }, { status: 400 });
-    }
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const db = await getDb();
-
-    if (logId) {
-      // Delete specific log by ID (ensure it belongs to the user)
-      await db
-        .delete(schema.workoutLogs)
-        .where(and(
-          eq(schema.workoutLogs.id, logId),
-          eq(schema.workoutLogs.userId, userId)
-        ) as any);
-    } else if (date) {
-      // Delete all logs for a specific date (date is stored as ISO string, so we match the date part)
-      const dateStr = new Date(date).toISOString().split('T')[0];
-      await db
-        .delete(schema.workoutLogs)
-        .where(and(
-          like(schema.workoutLogs.date, `${dateStr}%`),
-          eq(schema.workoutLogs.userId, userId)
-        ) as any);
-    }
+    await db
+      .delete(schema.workoutLogs)
+      .where(and(eq(schema.workoutLogs.id, id), eq(schema.workoutLogs.userId, userId)));
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error deleting workout log:', error);
-    return NextResponse.json({ error: 'Failed to delete workout log' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

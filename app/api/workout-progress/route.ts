@@ -1,181 +1,91 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 import { eq, and } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
-
-// GET: Fetch workout progress (by programId, dayId, week)
-export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const searchParams = request.nextUrl.searchParams;
-  const programId = searchParams.get('programId');
-  const dayId = searchParams.get('dayId');
-  const week = searchParams.get('week');
-
-  if (!programId || !dayId || !week) {
-    return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
-  }
-
+export async function GET(request: Request) {
   try {
-    const db = await getDb();
-    const progress = await db
+    const userId = await getUserId();
+    const db = getDb();
+    const { searchParams } = new URL(request.url);
+    const programId = searchParams.get('programId');
+    const dayId = searchParams.get('dayId');
+    const week = searchParams.get('week');
+
+    if (!programId || !dayId || !week) {
+      return NextResponse.json({ error: 'Missing programId, dayId, or week' }, { status: 400 });
+    }
+
+    const rows = await db
       .select()
       .from(schema.workoutProgress)
       .where(
         and(
-          eq(schema.workoutProgress.userId, session.user.id),
           eq(schema.workoutProgress.programId, programId),
           eq(schema.workoutProgress.dayId, dayId),
-          eq(schema.workoutProgress.week, week)
-        )
-      );
-
-    if (progress.length === 0) {
-      return NextResponse.json({ progress: null });
-    }
-
-    const progressData = progress[0];
-    return NextResponse.json({
-      progress: {
-        id: progressData.id,
-        programId: progressData.programId,
-        dayId: progressData.dayId,
-        week: progressData.week,
-        currentExerciseIndex: progressData.currentExerciseIndex,
-        exercises: JSON.parse(progressData.exercises),
-        createdAt: progressData.createdAt,
-        updatedAt: progressData.updatedAt,
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching workout progress:', error);
-    return NextResponse.json({ error: 'Failed to fetch progress' }, { status: 500 });
-  }
-}
-
-// POST: Save workout progress
-export async function POST(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const body = await request.json();
-    const { programId, dayId, week, currentExerciseIndex, exercises } = body;
-
-    if (!programId || !dayId || !week || currentExerciseIndex === undefined || !exercises) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const db = await getDb();
-    const now = new Date().toISOString();
-    const userId = session.user.id;
-
-    // Check if progress already exists
-    const existingProgress = await db
-      .select()
-      .from(schema.workoutProgress)
-      .where(
-        and(
+          eq(schema.workoutProgress.week, week),
           eq(schema.workoutProgress.userId, userId),
-          eq(schema.workoutProgress.programId, programId),
-          eq(schema.workoutProgress.dayId, dayId),
-          eq(schema.workoutProgress.week, week)
-        )
+        ),
       );
 
-    if (existingProgress.length > 0) {
-      // Update existing progress
-      await db
-        .update(schema.workoutProgress)
-        .set({
-          currentExerciseIndex,
-          exercises: JSON.stringify(exercises),
-          updatedAt: now,
-        })
-        .where(eq(schema.workoutProgress.id, existingProgress[0].id));
+    if (!rows.length) return NextResponse.json(null);
 
-      return NextResponse.json({
-        id: existingProgress[0].id,
-        updatedAt: now,
-      });
-    } else {
-      // Create new progress
-      const id = `${userId}-${programId}-${dayId}-${week}`;
-      await db.insert(schema.workoutProgress).values({
-        id,
-        programId,
-        dayId,
-        week,
-        currentExerciseIndex,
-        exercises: JSON.stringify(exercises),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      return NextResponse.json({
-        id,
-        updatedAt: now,
-      });
-    }
-  } catch (error) {
-    console.error('Error saving workout progress:', error);
-    return NextResponse.json({ error: 'Failed to save progress' }, { status: 500 });
+    const row = rows[0];
+    return NextResponse.json({ ...row, exercises: JSON.parse(row.exercises) });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE: Abandon workout progress
-export async function DELETE(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const searchParams = request.nextUrl.searchParams;
-  const programId = searchParams.get('programId');
-  const dayId = searchParams.get('dayId');
-  const week = searchParams.get('week');
-
-  if (!programId || !dayId || !week) {
-    return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
-  }
-
+export async function POST(request: Request) {
   try {
-    const db = await getDb();
+    const userId = await getUserId();
+    const db = getDb();
+    const body = await request.json();
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+
+    await db.insert(schema.workoutProgress).values({
+      id,
+      programId: body.programId,
+      dayId: body.dayId,
+      week: body.week,
+      currentExerciseIndex: body.currentExerciseIndex ?? 0,
+      exercises: JSON.stringify(body.exercises),
+      userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const userId = await getUserId();
+    const db = getDb();
+    const body = await request.json();
+
+    if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+    const now = new Date().toISOString();
+    const updates: Record<string, any> = { updatedAt: now };
+    if (body.currentExerciseIndex !== undefined) updates.currentExerciseIndex = body.currentExerciseIndex;
+    if (body.exercises !== undefined) updates.exercises = JSON.stringify(body.exercises);
+
     await db
-      .delete(schema.workoutProgress)
-      .where(
-        and(
-          eq(schema.workoutProgress.userId, session.user.id),
-          eq(schema.workoutProgress.programId, programId),
-          eq(schema.workoutProgress.dayId, dayId),
-          eq(schema.workoutProgress.week, week)
-        )
-      );
+      .update(schema.workoutProgress)
+      .set(updates)
+      .where(and(eq(schema.workoutProgress.id, body.id), eq(schema.workoutProgress.userId, userId)));
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting workout progress:', error);
-    return NextResponse.json({ error: 'Failed to delete progress' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-

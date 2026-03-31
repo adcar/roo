@@ -1,41 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
-
-// GET: Fetch all in-progress workouts for the current user
-export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET() {
   try {
-    const db = await getDb();
-    const progress = await db
+    const userId = await getUserId();
+    const db = getDb();
+
+    const rows = await db
       .select()
       .from(schema.workoutProgress)
-      .where(eq(schema.workoutProgress.userId, session.user.id));
+      .where(eq(schema.workoutProgress.userId, userId));
 
-    return NextResponse.json({
-      progress: progress.map(p => ({
-        id: p.id,
-        programId: p.programId,
-        dayId: p.dayId,
-        week: p.week,
-        currentExerciseIndex: p.currentExerciseIndex,
-        updatedAt: p.updatedAt,
-      }))
-    });
-  } catch (error) {
-    console.error('Error fetching workout progress:', error);
-    return NextResponse.json({ error: 'Failed to fetch progress' }, { status: 500 });
+    const progress = rows.map((r) => ({ ...r, exercises: JSON.parse(r.exercises) }));
+    return NextResponse.json(progress);
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

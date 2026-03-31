@@ -2,78 +2,36 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Program } from '@/types/exercise';
-import ProgramForm from '@/components/ProgramForm';
-import { useLoading } from '@/components/LoadingProvider';
+import type { Program } from '@/types/exercise';
+import ProgramForm from '@/components/program-form';
 
 export default function EditProgramPage() {
   const params = useParams();
   const router = useRouter();
-  const { startLoading, stopLoading } = useLoading();
   const [program, setProgram] = useState<Program | null>(null);
-  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (params.id) {
-      startLoading();
-      fetch(`/api/programs/${params.id}`)
-        .then(res => {
-          if (!res.ok) {
-            if (res.status === 404) {
-              setNotFound(true);
-            }
-            stopLoading();
-            return;
-          }
-          return res.json();
-        })
-        .then(data => {
-          if (data) {
-            setProgram(data);
-          }
-          stopLoading();
-        })
-        .catch(error => {
-          console.error('Error loading program:', error);
-          stopLoading();
-        });
-    }
-  }, [params.id, startLoading, stopLoading]);
+    if (!params.id) return;
+    fetch(`/api/programs/${params.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setProgram(d); else router.replace('/programs'); });
+  }, [params.id, router]);
 
-  const handleSave = async (programData: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const updatedProgram: Program = {
-      id: params.id as string,
-      ...programData,
-      createdAt: program?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await fetch(`/api/programs/${params.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedProgram),
-    });
-  };
-
-  if (notFound) {
+  if (!program) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-2xl">Program not found</div>
+      <div className="flex h-[60dvh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
 
-  if (!program) {
-    return null;
-  }
+  const handleSave = async (data: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await fetch(`/api/programs/${program.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, updatedAt: new Date().toISOString() }),
+    });
+  };
 
-  return (
-    <ProgramForm
-      initialProgram={program}
-      onSave={handleSave}
-      cancelUrl="/"
-      title="Edit Program"
-      saveButtonText="Save Changes"
-    />
-  );
+  return <ProgramForm initialProgram={program} onSave={handleSave} cancelUrl={`/programs/${program.id}`} title="Edit Program" />;
 }

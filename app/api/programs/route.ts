@@ -1,75 +1,63 @@
 import { NextResponse } from 'next/server';
+import { getUserId } from '@/lib/auth-server';
 import { getDb, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { getUserId } from '@/lib/auth-server';
-
-function normalizeExerciseOrder(days: any[]) {
-  return days.map(day => ({
-    ...day,
-    weekA: day.weekA?.map((ex: any, idx: number) => ({ ...ex, order: ex.order ?? idx })) || [],
-    weekB: day.weekB?.map((ex: any, idx: number) => ({ ...ex, order: ex.order ?? idx })) || [],
-  }));
-}
 
 export async function GET() {
   try {
     const userId = await getUserId();
-    const db = await getDb();
-    const allPrograms = await db
+    const db = getDb();
+    const rows = await db
       .select()
       .from(schema.programs)
       .where(eq(schema.programs.userId, userId));
 
-    const programs = allPrograms.map(p => {
+    const programs = rows.map((p) => {
       const days = JSON.parse(p.days);
+      const normalizedDays = days.map((day: any) => ({
+        ...day,
+        exercises: (day.exercises ?? []).map((ex: any, i: number) => ({
+          ...ex,
+          order: ex.order ?? i,
+        })),
+      }));
       return {
         ...p,
-        days: normalizeExerciseOrder(days),
-        isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined, // Convert integer to boolean, undefined if null
-        durationWeeks: p.durationWeeks !== null ? p.durationWeeks : undefined, // Convert integer to number, undefined if null
+        days: normalizedDays,
+        isSplit: p.isSplit !== null ? Boolean(p.isSplit) : undefined,
+        durationWeeks: p.durationWeeks ?? undefined,
       };
     });
 
     return NextResponse.json(programs);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error fetching programs:', error);
-    return NextResponse.json({ error: 'Failed to fetch programs' }, { status: 500 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const userId = await getUserId();
+    const db = getDb();
     const body = await request.json();
-    const db = await getDb();
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
 
-    const program = {
-      id: body.id || Date.now().toString(),
+    await db.insert(schema.programs).values({
+      id,
       name: body.name,
       days: JSON.stringify(body.days),
-      isSplit: body.isSplit !== undefined ? (body.isSplit ? 1 : 0) : null,
-      durationWeeks: body.durationWeeks !== undefined ? body.durationWeeks : null,
-      createdAt: body.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      isSplit: body.isSplit ? 1 : 0,
+      durationWeeks: body.durationWeeks ?? null,
+      createdAt: now,
+      updatedAt: now,
       userId,
-    };
-
-    await db.insert(schema.programs).values(program);
-
-    return NextResponse.json({
-      ...program,
-      days: JSON.parse(program.days),
-      isSplit: program.isSplit !== null ? Boolean(program.isSplit) : undefined,
-      durationWeeks: program.durationWeeks !== null ? program.durationWeeks : undefined,
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Error creating program:', error);
-    return NextResponse.json({ error: 'Failed to create program' }, { status: 500 });
+
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
