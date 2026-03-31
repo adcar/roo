@@ -37,8 +37,28 @@ export async function POST(request: Request) {
     const db = getDb();
     const body = await request.json();
     const now = new Date().toISOString();
-    const id = crypto.randomUUID();
 
+    // Check if a note already exists for this exercise
+    const existing = await db
+      .select()
+      .from(schema.workoutNotes)
+      .where(and(
+        eq(schema.workoutNotes.userId, userId),
+        eq(schema.workoutNotes.programId, body.programId),
+        eq(schema.workoutNotes.dayId, body.dayId),
+        eq(schema.workoutNotes.week, body.week),
+        eq(schema.workoutNotes.exerciseId, body.exerciseId),
+      ));
+
+    if (existing.length > 0) {
+      await db
+        .update(schema.workoutNotes)
+        .set({ notes: body.notes ?? null, updatedAt: now })
+        .where(eq(schema.workoutNotes.id, existing[0].id));
+      return NextResponse.json({ id: existing[0].id });
+    }
+
+    const id = crypto.randomUUID();
     await db.insert(schema.workoutNotes).values({
       id,
       programId: body.programId,

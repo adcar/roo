@@ -293,7 +293,7 @@ function WorkoutContent() {
     const ew = program.isSplit !== false ? selectedWeek : 'A';
     fetch(`/api/workout-notes?programId=${programId}&dayId=${dayId}&week=${ew}&exerciseId=${currentExercise.id}`)
       .then(r => r.json())
-      .then(d => { if (d.notes) setWorkoutNotes(d.notes.notes || ''); });
+      .then(d => { if (Array.isArray(d) && d.length > 0) setWorkoutNotes(d[0].notes || ''); });
   }, [programId, dayId, selectedWeek, currentExerciseIndex]);
 
   const saveNotes = useCallback(async (notes: string) => {
@@ -427,7 +427,7 @@ function WorkoutContent() {
   const overallTotal = exerciseLogs.reduce((acc, log) => acc + log.sets.length, 0);
 
   return (
-    <div className="min-h-dvh px-4 pt-4 pb-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--background)] px-4 pt-4 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" size="sm" onClick={() => setShowAbandonModal(true)} className="-ml-2">
