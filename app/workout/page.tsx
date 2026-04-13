@@ -242,10 +242,10 @@ function WorkoutContent() {
     fetch(`/api/workout-progress?programId=${programId}&dayId=${dayId}&week=${ew}`)
       .then(r => r.json())
       .then(progressData => {
-        if (progressData.progress) {
-          setCurrentExerciseIndex(progressData.progress.currentExerciseIndex || 0);
-          setExerciseLogs(progressData.progress.exercises || []);
-          if (progressData.progress.updatedAt) setLastSavedAt(new Date(progressData.progress.updatedAt));
+        if (progressData && progressData.id) {
+          setCurrentExerciseIndex(progressData.currentExerciseIndex || 0);
+          setExerciseLogs(progressData.exercises || []);
+          if (progressData.updatedAt) setLastSavedAt(new Date(progressData.updatedAt));
           return;
         }
         // Fall back to previous logs

@@ -44,8 +44,36 @@ export async function POST(request: Request) {
     const db = getDb();
     const body = await request.json();
     const now = new Date().toISOString();
-    const id = crypto.randomUUID();
 
+    // Check if progress already exists for this workout
+    const existing = await db
+      .select()
+      .from(schema.workoutProgress)
+      .where(
+        and(
+          eq(schema.workoutProgress.programId, body.programId),
+          eq(schema.workoutProgress.dayId, body.dayId),
+          eq(schema.workoutProgress.week, body.week),
+          eq(schema.workoutProgress.userId, userId),
+        ),
+      );
+
+    if (existing.length > 0) {
+      // Update existing progress
+      await db
+        .update(schema.workoutProgress)
+        .set({
+          currentExerciseIndex: body.currentExerciseIndex ?? 0,
+          exercises: JSON.stringify(body.exercises),
+          updatedAt: now,
+        })
+        .where(eq(schema.workoutProgress.id, existing[0].id));
+
+      return NextResponse.json({ id: existing[0].id, updatedAt: now });
+    }
+
+    // Create new progress
+    const id = crypto.randomUUID();
     await db.insert(schema.workoutProgress).values({
       id,
       programId: body.programId,
@@ -58,7 +86,7 @@ export async function POST(request: Request) {
       updatedAt: now,
     });
 
-    return NextResponse.json({ id }, { status: 201 });
+    return NextResponse.json({ id, updatedAt: now }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -82,6 +110,37 @@ export async function PUT(request: Request) {
       .update(schema.workoutProgress)
       .set(updates)
       .where(and(eq(schema.workoutProgress.id, body.id), eq(schema.workoutProgress.userId, userId)));
+
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const userId = await getUserId();
+    const db = getDb();
+    const { searchParams } = new URL(request.url);
+    const programId = searchParams.get('programId');
+    const dayId = searchParams.get('dayId');
+    const week = searchParams.get('week');
+
+    if (!programId || !dayId || !week) {
+      return NextResponse.json({ error: 'Missing programId, dayId, or week' }, { status: 400 });
+    }
+
+    await db
+      .delete(schema.workoutProgress)
+      .where(
+        and(
+          eq(schema.workoutProgress.programId, programId),
+          eq(schema.workoutProgress.dayId, dayId),
+          eq(schema.workoutProgress.week, week),
+          eq(schema.workoutProgress.userId, userId),
+        ),
+      );
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
